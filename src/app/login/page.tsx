@@ -127,21 +127,22 @@ export default function LoginPage() {
                 <div className="input flex items-center gap-2 text-gray-400 text-sm">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" /> Buscando empresas...
                 </div>
+              ) : empresas.length === 0 ? (
+                <div className="input text-gray-400 text-sm select-none">
+                  {login.trim() ? 'Nenhuma empresa encontrada' : 'Informe o usuário acima'}
+                </div>
               ) : (
                 <select
                   value={empresaId}
                   onChange={(e) => setEmpresaId(e.target.value)}
                   className="input"
-                  disabled={loading || empresas.length === 0}
+                  disabled={loading}
                 >
-                  {empresas.length === 0
-                    ? <option value="">—</option>
-                    : empresas.map((emp) => (
-                        <option key={emp.id} value={emp.id}>
-                          {emp.fantasia || emp.nome}
-                        </option>
-                      ))
-                  }
+                  {empresas.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.fantasia || emp.nome}
+                    </option>
+                  ))}
                 </select>
               )}
             </div>
