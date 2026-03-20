@@ -84,12 +84,25 @@ export async function POST(request: NextRequest) {
   const temAluguel = produtosInfo?.some((p) => p.tipo === 'aluguel') ?? false
   const pedidoStatus = temAluguel ? 'EM ABERTO' : 'FINALIZADO'
 
+  // Busca snapshot dos planos para copiar tolerância para os itens
+  const planoIds = [...new Set(
+    itens.map((i: Record<string, unknown>) => i.plano_id as string).filter(Boolean)
+  )]
+  const { data: planosInfo } = planoIds.length
+    ? await supabase
+        .from('planos')
+        .select('id, tolerancia, valor_minuto_excedente, cobra_tolerancia')
+        .in('id', planoIds)
+    : { data: [] }
+
+  const agora = new Date().toISOString()
+
   // Insere pedido
   const { data: pedido, error: pedidoError } = await supabase
     .from('pedidos')
     .insert({
       empresa_id: session.empresaAtualId,
-      data: data ?? new Date().toISOString().slice(0, 10),
+      data: data ?? agora.slice(0, 10),
       cpf: cleanCpf(cpf),
       cliente_nome: cliente_nome.trim(),
       telefone: telefone?.trim() || null,
@@ -102,6 +115,7 @@ export async function POST(request: NextRequest) {
       obs: obs?.trim() || null,
       troco,
       status: pedidoStatus,
+      finalizado_em: pedidoStatus === 'FINALIZADO' ? agora : null,
       criado_por: session.profileId,
     })
     .select('id')
@@ -111,9 +125,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: pedidoError?.message ?? 'Erro ao salvar pedido.' }, { status: 500 })
   }
 
-  // Insere itens com status por tipo
+  // Insere itens com status, finalizado_em e snapshot do plano
   const itensPayload = itens.map((item: Record<string, unknown>) => {
     const tipo = produtosInfo?.find((p) => p.id === item.produto_id)?.tipo
+    const plano = planosInfo?.find((p) => p.id === item.plano_id)
+    const isAluguel = tipo === 'aluguel'
     return {
       pedido_id: pedido.id,
       produto_id: item.produto_id,
@@ -123,7 +139,11 @@ export async function POST(request: NextRequest) {
       valor: item.valor,
       hora_inicio: item.hora_inicio ?? null,
       hora_fim: item.hora_fim ?? null,
-      status: tipo === 'aluguel' ? 'EM ABERTO' : 'FINALIZADO',
+      status: isAluguel ? 'EM ABERTO' : 'FINALIZADO',
+      finalizado_em: isAluguel ? null : agora,
+      tolerancia: plano?.tolerancia ?? null,
+      valor_minuto_excedente: plano?.valor_minuto_excedente ?? null,
+      cobra_tolerancia: plano?.cobra_tolerancia ?? null,
       criado_por: session.profileId,
     }
   })

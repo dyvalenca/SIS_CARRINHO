@@ -60,10 +60,12 @@ export async function PATCH(request: NextRequest) {
 
   const supabase = createServerClient()
 
+  const agora = new Date().toISOString()
+
   // Finaliza o item
   const { data: item, error: itemError } = await supabase
     .from('itens_pedido')
-    .update({ status: 'FINALIZADO' })
+    .update({ status: 'FINALIZADO', finalizado_em: agora })
     .eq('id', item_id)
     .select('pedido_id')
     .single()
@@ -82,7 +84,7 @@ export async function PATCH(request: NextRequest) {
   if (count === 0) {
     await supabase
       .from('pedidos')
-      .update({ status: 'FINALIZADO' })
+      .update({ status: 'FINALIZADO', finalizado_em: agora })
       .eq('id', item.pedido_id)
   }
 
