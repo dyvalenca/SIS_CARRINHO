@@ -12,7 +12,6 @@ import {
   UserCheck,
   Building2,
   LogOut,
-  ChevronDown,
   Store,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -70,20 +69,9 @@ function NavLink({
 
 export function Sidebar({ session }: SidebarProps) {
   const router = useRouter()
-  const [empresaOpen, setEmpresaOpen] = useState(false)
   const [logoutLoading, setLogoutLoading] = useState(false)
 
   const empresaAtual = session.empresas.find((e) => e.id === session.empresaAtualId)
-
-  async function handleTrocarEmpresa(empresaId: string) {
-    await fetch('/api/auth/empresa', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ empresaId }),
-    })
-    setEmpresaOpen(false)
-    router.refresh()
-  }
 
   async function handleLogout() {
     setLogoutLoading(true)
@@ -104,36 +92,12 @@ export function Sidebar({ session }: SidebarProps) {
           </span>
         </div>
 
-        {/* Empresa switcher */}
-        <div className="relative">
-          <button
-            onClick={() => setEmpresaOpen((v) => !v)}
-            className="w-full flex items-center gap-2 bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg text-left transition-colors"
-          >
-            <Store className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-            <span className="text-xs text-gray-200 truncate flex-1">
-              {empresaAtual?.fantasia ?? 'Selecionar empresa'}
-            </span>
-            <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform ${empresaOpen ? 'rotate-180' : ''}`} />
-          </button>
-
-          {empresaOpen && session.empresas.length > 1 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-30 overflow-hidden">
-              {session.empresas.map((e) => (
-                <button
-                  key={e.id}
-                  onClick={() => handleTrocarEmpresa(e.id)}
-                  className={`w-full text-left px-3 py-2 text-xs transition-colors ${
-                    e.id === session.empresaAtualId
-                      ? 'text-blue-400 bg-gray-700'
-                      : 'text-gray-300 hover:bg-gray-700'
-                  }`}
-                >
-                  {e.fantasia}
-                </button>
-              ))}
-            </div>
-          )}
+        {/* Empresa ativa */}
+        <div className="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded-lg">
+          <Store className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+          <span className="text-xs text-gray-200 truncate">
+            {empresaAtual?.fantasia ?? '—'}
+          </span>
         </div>
       </div>
 
