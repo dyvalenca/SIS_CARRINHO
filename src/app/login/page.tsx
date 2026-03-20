@@ -93,6 +93,29 @@ export default function LoginPage() {
             </div>
 
             <div>
+              <label className="label text-gray-700">Senha</label>
+              <div className="relative">
+                <input
+                  type={showSenha ? 'text' : 'password'}
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  placeholder="••••••••"
+                  className="input pr-10"
+                  autoComplete="current-password"
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSenha((v) => !v)}
+                  className="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600"
+                  tabIndex={-1}
+                >
+                  {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
               <label className="label text-gray-700">
                 <Building2 className="w-3.5 h-3.5 inline mr-1 text-gray-400" />
                 Empresa
@@ -118,29 +141,6 @@ export default function LoginPage() {
                   }
                 </select>
               )}
-            </div>
-
-            <div>
-              <label className="label text-gray-700">Senha</label>
-              <div className="relative">
-                <input
-                  type={showSenha ? 'text' : 'password'}
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  placeholder="••••••••"
-                  className="input pr-10"
-                  autoComplete="current-password"
-                  disabled={loading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowSenha((v) => !v)}
-                  className="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600"
-                  tabIndex={-1}
-                >
-                  {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
             </div>
 
             {error && (

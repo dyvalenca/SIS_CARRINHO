@@ -12,7 +12,8 @@ export async function POST(request: NextRequest) {
   const { data: profile } = await supabase
     .from('profiles')
     .select('id, is_admin, ativo')
-    .eq('login', login.trim().toLowerCase())
+    .ilike('login', login.trim())
+    .eq('ativo', true)
     .single()
 
   if (!profile || !profile.ativo) return NextResponse.json({ empresas: [] })
