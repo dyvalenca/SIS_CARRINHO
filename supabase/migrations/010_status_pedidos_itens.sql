@@ -13,8 +13,8 @@ ALTER TABLE itens_pedido
   CONSTRAINT itens_pedido_status_check CHECK (status IN ('EM ABERTO', 'CANCELADO', 'FINALIZADO'));
 
 -- Registros existentes: marcar como FINALIZADO (criados antes desta feature)
-UPDATE pedidos      SET status = 'FINALIZADO';
-UPDATE itens_pedido SET status = 'FINALIZADO';
+UPDATE pedidos      SET status = 'EM ABERTO';
+UPDATE itens_pedido SET status = 'EM ABERTO';
 
 -- =============================================================================
 -- ROLLBACK

@@ -9,10 +9,20 @@ interface Plano {
   nome: string
   preco: number
   tempo: number
+  tolerancia: number
+  valor_minuto_excedente: number
+  cobra_tolerancia: boolean
   ativo: boolean
 }
 
-const emptyForm = { nome: '', preco: '', tempo: '' }
+const emptyForm = {
+  nome: '',
+  preco: '',
+  tempo: '',
+  tolerancia: '5',
+  valor_minuto_excedente: '1.00',
+  cobra_tolerancia: true,
+}
 
 export default function PlanosPage() {
   const [planos, setPlanos] = useState<Plano[]>([])
@@ -31,7 +41,7 @@ export default function PlanosPage() {
 
   async function handleSave() {
     if (!form.nome.trim() || !form.preco || !form.tempo) {
-      setError('Todos os campos são obrigatórios.')
+      setError('Nome, preço e duração são obrigatórios.')
       return
     }
     setSaving(true)
@@ -39,7 +49,14 @@ export default function PlanosPage() {
     const res = await fetch('/api/planos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nome: form.nome, preco: form.preco, tempo: form.tempo }),
+      body: JSON.stringify({
+        nome: form.nome,
+        preco: form.preco,
+        tempo: form.tempo,
+        tolerancia: form.tolerancia,
+        valor_minuto_excedente: form.valor_minuto_excedente,
+        cobra_tolerancia: form.cobra_tolerancia,
+      }),
     })
     const data = await res.json()
     if (!res.ok) { setError(data.error); setSaving(false); return }
@@ -49,12 +66,18 @@ export default function PlanosPage() {
     setSaving(false)
   }
 
+  function formatTempo(min: number) {
+    return min >= 60
+      ? `${Math.floor(min / 60)}h${min % 60 > 0 ? ` ${min % 60}min` : ''}`
+      : `${min}min`
+  }
+
   return (
-    <div className="max-w-3xl mx-auto space-y-5">
+    <div className="max-w-5xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Planos de Aluguel</h1>
-          <p className="text-sm text-gray-500">Tabela de preços e duração dos aluguéis</p>
+          <p className="text-sm text-gray-500">Tabela de preços, duração e tolerância dos aluguéis</p>
         </div>
         <button onClick={() => setShowForm(true)} className="btn-primary">
           <Plus className="w-4 h-4" /> Novo Plano
@@ -105,6 +128,40 @@ export default function PlanosPage() {
                 className="input"
               />
             </div>
+            <div>
+              <label className="label">Tolerância (minutos)</label>
+              <input
+                type="number"
+                min="0"
+                value={form.tolerancia}
+                onChange={(e) => setForm((f) => ({ ...f, tolerancia: e.target.value }))}
+                placeholder="Ex: 5"
+                className="input"
+              />
+            </div>
+            <div>
+              <label className="label">Valor/minuto excedente (R$)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.valor_minuto_excedente}
+                onChange={(e) => setForm((f) => ({ ...f, valor_minuto_excedente: e.target.value }))}
+                placeholder="1,00"
+                className="input"
+              />
+            </div>
+            <div className="flex items-end pb-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={form.cobra_tolerancia}
+                  onChange={(e) => setForm((f) => ({ ...f, cobra_tolerancia: e.target.checked }))}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                <span className="text-sm text-gray-700">Cobrar tolerância no excedente</span>
+              </label>
+            </div>
           </div>
           {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
           <div className="flex justify-end gap-2 mt-4">
@@ -136,6 +193,9 @@ export default function PlanosPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Plano</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Duração</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Preço</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Tolerância</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">R$/min excedente</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Cobra tolerância</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
               </tr>
             </thead>
@@ -146,13 +206,23 @@ export default function PlanosPage() {
                   <td className="px-4 py-3 text-gray-600">
                     <span className="inline-flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5 text-gray-400" />
-                      {plano.tempo >= 60
-                        ? `${Math.floor(plano.tempo / 60)}h${plano.tempo % 60 > 0 ? ` ${plano.tempo % 60}min` : ''}`
-                        : `${plano.tempo}min`}
+                      {formatTempo(plano.tempo)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right font-bold text-gray-900">
                     {formatCurrency(plano.preco)}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">{plano.tolerancia}min</td>
+                  <td className="px-4 py-3 text-right text-gray-600">
+                    {formatCurrency(plano.valor_minuto_excedente)}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={cn(
+                      'px-2 py-0.5 rounded-full text-xs font-medium',
+                      plano.cobra_tolerancia ? 'bg-orange-50 text-orange-700' : 'bg-gray-100 text-gray-500',
+                    )}>
+                      {plano.cobra_tolerancia ? 'Sim' : 'Não'}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <span className={cn(
