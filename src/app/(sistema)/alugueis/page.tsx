@@ -13,6 +13,7 @@ interface AluguelItem {
   telefone: string | null
   produto: string
   plano: string
+  plano_tempo: number | null
   hora_inicio: string | null
   hora_fim: string | null
   valor: number
@@ -195,7 +196,12 @@ export default function AlugueisPage() {
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{item.produto}</p>
-                      <p className="text-xs text-gray-500">{item.plano}</p>
+                      <p className="text-xs text-gray-500">
+                        {item.plano}
+                        {item.plano_tempo != null && (
+                          <span className="ml-1 text-gray-400">· {item.plano_tempo}min</span>
+                        )}
+                      </p>
                     </td>
                     <td className="px-4 py-3 font-mono text-sm text-gray-700">
                       {item.hora_inicio ?? '—'}

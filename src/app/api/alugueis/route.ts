@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       itens_pedido(
         id, hora_inicio, hora_fim, valor,
         produtos(id, nome, tipo),
-        planos(id, nome),
+        planos(id, nome, tempo),
         vendedores(id, nome)
       )
     `)
@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
         telefone: p.telefone,
         produto: item.produtos?.nome ?? '—',
         plano: item.planos?.nome ?? '—',
+        plano_tempo: item.planos?.tempo ?? null,
         hora_inicio: item.hora_inicio,
         hora_fim: item.hora_fim,
         valor: item.valor,
