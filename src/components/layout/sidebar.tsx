@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Users,
   Package,
+  Clock,
   UserCheck,
   Building2,
   LogOut,
@@ -28,6 +29,7 @@ const navItems = [
 const cadastroItems = [
   { href: '/clientes', label: 'Clientes', icon: Users },
   { href: '/produtos', label: 'Produtos', icon: Package },
+  { href: '/planos', label: 'Planos de Aluguel', icon: Clock },
   { href: '/vendedores', label: 'Vendedores', icon: UserCheck },
 ]
 
