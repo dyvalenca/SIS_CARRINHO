@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, ShoppingCart } from 'lucide-react'
 import { formatCurrency, formatDate, todayISO } from '@/lib/utils'
+import { FiltroData } from '@/components/pedidos/filtro-data'
 
 export default async function PedidosPage({
   searchParams,
@@ -42,25 +43,7 @@ export default async function PedidosPage({
       </div>
 
       {/* Filtro de data */}
-      <div className="card p-4 flex items-center gap-4">
-        <label className="text-sm font-medium text-gray-700">Data:</label>
-        <form method="GET">
-          <input
-            type="date"
-            name="data"
-            defaultValue={dataFiltro}
-            onChange={(e) => {
-              const form = e.target.closest('form') as HTMLFormElement
-              form?.submit()
-            }}
-            className="input w-44"
-          />
-        </form>
-        <div className="ml-auto text-right">
-          <p className="text-xs text-gray-500">Total do dia</p>
-          <p className="text-xl font-bold text-gray-900">{formatCurrency(totalDia)}</p>
-        </div>
-      </div>
+      <FiltroData dataFiltro={dataFiltro} totalDia={formatCurrency(totalDia)} />
 
       {/* Tabela */}
       <div className="card overflow-hidden">
