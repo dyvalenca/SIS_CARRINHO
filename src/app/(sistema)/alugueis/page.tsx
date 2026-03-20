@@ -244,16 +244,13 @@ export default function AlugueisPage() {
                         {item.plano_tempo != null && (
                           <span className="ml-1 text-gray-400">· {item.plano_tempo}min</span>
                         )}
-                        {item.tolerancia > 0 && (
-                          <span className="ml-1 text-gray-400">· car. {item.tolerancia}min</span>
-                        )}
                       </p>
                     </td>
                     <td className="px-4 py-3 font-mono text-sm text-gray-700">
-                      {item.hora_inicio ?? '—'}
+                      {item.hora_inicio?.slice(0, 5) ?? '—'}
                     </td>
                     <td className="px-4 py-3 font-mono text-sm text-gray-700">
-                      {item.hora_fim ?? '—'}
+                      {item.hora_fim?.slice(0, 5) ?? '—'}
                     </td>
                     <td className="px-4 py-3 text-sm">
                       {st === 'carencia' && (
