@@ -22,8 +22,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  async function handleLoginBlur() {
-    if (!login.trim()) return
+  async function handleLoginBlur(e: React.FocusEvent<HTMLInputElement>) {
+    const valor = e.target.value.trim()
+    if (!valor) return
     setLoadingEmpresas(true)
     setEmpresas([])
     setEmpresaId('')
@@ -31,12 +32,14 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/empresas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ login: login.trim() }),
+        body: JSON.stringify({ login: valor }),
       })
       const data = await res.json()
       const lista: EmpresaOption[] = data.empresas ?? []
       setEmpresas(lista)
       setEmpresaId(lista[0]?.id ?? '')
+    } catch {
+      // silencioso — empresa permanece vazia
     } finally {
       setLoadingEmpresas(false)
     }
@@ -83,7 +86,7 @@ export default function LoginPage() {
                 type="text"
                 value={login}
                 onChange={(e) => { setLogin(e.target.value); setEmpresas([]); setEmpresaId('') }}
-                onBlur={handleLoginBlur}
+                onBlur={(e) => handleLoginBlur(e)}
                 placeholder="seu.usuario"
                 className="input"
                 autoFocus
