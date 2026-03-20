@@ -65,8 +65,8 @@ export async function POST(request: NextRequest) {
   }
 
   // 4. Grava sessão
-  const cookieStore = cookies()
-  const session = await getIronSession<SessionData>(cookieStore as Parameters<typeof getIronSession>[0], sessionOptions)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const session = await getIronSession<SessionData>(cookies() as any, sessionOptions)
 
   session.profileId = profileId
   session.login = profile.login

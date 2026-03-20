@@ -13,7 +13,7 @@ export const sessionOptions: SessionOptions = {
   },
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getSession() {
-  const cookieStore = cookies()
-  return getIronSession<SessionData>(cookieStore as Parameters<typeof getIronSession>[0], sessionOptions)
+  return getIronSession<SessionData>(cookies() as any, sessionOptions)
 }
