@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { Sidebar } from '@/components/layout/sidebar'
+import { EnterAsTab } from '@/components/enter-as-tab'
 
 export default async function SistemaLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession()
@@ -9,6 +10,7 @@ export default async function SistemaLayout({ children }: { children: React.Reac
 
   return (
     <div className="flex min-h-screen">
+      <EnterAsTab />
       <Sidebar session={session} />
       <main className="flex-1 ml-60 p-6 bg-gray-50 min-h-screen">
         {children}
