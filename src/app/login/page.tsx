@@ -87,6 +87,7 @@ export default function LoginPage() {
                 value={login}
                 onChange={(e) => { setLogin(e.target.value); setEmpresas([]); setEmpresaId('') }}
                 onBlur={(e) => handleLoginBlur(e)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLoginBlur(e as any) } }}
                 placeholder="seu.usuario"
                 className="input"
                 autoFocus
