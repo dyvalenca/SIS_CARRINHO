@@ -276,7 +276,8 @@ export function PedidoForm({ produtos, planos, vendedores }: PedidoFormProps) {
         return
       }
 
-      router.push('/pedidos')
+      const temAluguel = itens.some((i) => i.produto_tipo === 'aluguel')
+      router.push(temAluguel ? '/alugueis' : '/pedidos')
       router.refresh()
     } catch {
       setSubmitError('Erro de conexão. Tente novamente.')

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   ShoppingCart,
   ClipboardList,
+  LayoutDashboard,
   Users,
   Package,
   Clock,
@@ -24,6 +25,7 @@ interface SidebarProps {
 const navItems = [
   { href: '/pedidos/novo', label: 'Novo Pedido', icon: ShoppingCart, exact: true },
   { href: '/pedidos', label: 'Pedidos', icon: ClipboardList, exact: true },
+  { href: '/alugueis', label: 'Painel de Aluguéis', icon: LayoutDashboard, exact: false },
 ]
 
 const cadastroItems = [
