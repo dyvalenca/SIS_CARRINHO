@@ -14,18 +14,20 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createServerClient()
-  const { data } = await supabase
-    .from('clientes')
-    .select('id, cpf, nome, telefone')
-    .eq('cpf', cpf)
-    .eq('ativo', true)
-    .single()
+  const { data, error } = await supabase.rpc('fn_get_cliente_cpf', { p_cpf: cpf })
 
-  if (!data) {
+  if (error) {
+    console.error('[clientes GET] erro rpc:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  const cliente = data?.[0] ?? null
+
+  if (!cliente || !cliente.ativo) {
     return NextResponse.json({ error: 'Cliente não encontrado.' }, { status: 404 })
   }
 
-  return NextResponse.json({ cliente: data })
+  return NextResponse.json({ cliente })
 }
 
 // POST /api/clientes — cria novo cliente
@@ -44,25 +46,22 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServerClient()
 
-  // Evita duplicata se alguém já cadastrou enquanto o usuário digitava
-  const { data: existing } = await supabase
-    .from('clientes')
-    .select('id, cpf, nome, telefone')
-    .eq('cpf', cpf)
-    .single()
-
-  if (existing) return NextResponse.json({ cliente: existing }, { status: 200 })
-
-  const { data, error } = await supabase
-    .from('clientes')
-    .insert({ cpf, nome, telefone, criado_por: session.profileId })
-    .select('id, cpf, nome, telefone')
-    .single()
+  const { data, error } = await supabase.rpc('fn_upsert_cliente', {
+    p_cpf: cpf,
+    p_nome: nome,
+    p_telefone: telefone,
+    p_criado_por: session.profileId,
+  })
 
   if (error) {
-    console.error('[clientes POST] erro supabase:', error)
+    console.error('[clientes POST] erro rpc:', error)
     return NextResponse.json({ error: `Erro ao cadastrar cliente: ${error.message}` }, { status: 500 })
   }
 
-  return NextResponse.json({ cliente: data }, { status: 201 })
+  const cliente = data?.[0] ?? null
+  if (!cliente) {
+    return NextResponse.json({ error: 'Erro ao cadastrar cliente.' }, { status: 500 })
+  }
+
+  return NextResponse.json({ cliente }, { status: 201 })
 }
