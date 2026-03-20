@@ -74,6 +74,16 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServerClient()
 
+  // Determina status pelo tipo dos produtos
+  const produtoIds = itens.map((i: Record<string, unknown>) => i.produto_id as string)
+  const { data: produtosInfo } = await supabase
+    .from('produtos')
+    .select('id, tipo')
+    .in('id', produtoIds)
+
+  const temAluguel = produtosInfo?.some((p) => p.tipo === 'aluguel') ?? false
+  const pedidoStatus = temAluguel ? 'EM ABERTO' : 'FINALIZADO'
+
   // Insere pedido
   const { data: pedido, error: pedidoError } = await supabase
     .from('pedidos')
@@ -91,6 +101,7 @@ export async function POST(request: NextRequest) {
       outros,
       obs: obs?.trim() || null,
       troco,
+      status: pedidoStatus,
       criado_por: session.profileId,
     })
     .select('id')
@@ -100,18 +111,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: pedidoError?.message ?? 'Erro ao salvar pedido.' }, { status: 500 })
   }
 
-  // Insere itens
-  const itensPayload = itens.map((item: Record<string, unknown>) => ({
-    pedido_id: pedido.id,
-    produto_id: item.produto_id,
-    plano_id: item.plano_id ?? null,
-    vendedor_id: item.vendedor_id ?? null,
-    quantidade: item.quantidade ?? null,
-    valor: item.valor,
-    hora_inicio: item.hora_inicio ?? null,
-    hora_fim: item.hora_fim ?? null,
-    criado_por: session.profileId,
-  }))
+  // Insere itens com status por tipo
+  const itensPayload = itens.map((item: Record<string, unknown>) => {
+    const tipo = produtosInfo?.find((p) => p.id === item.produto_id)?.tipo
+    return {
+      pedido_id: pedido.id,
+      produto_id: item.produto_id,
+      plano_id: item.plano_id ?? null,
+      vendedor_id: item.vendedor_id ?? null,
+      quantidade: item.quantidade ?? null,
+      valor: item.valor,
+      hora_inicio: item.hora_inicio ?? null,
+      hora_fim: item.hora_fim ?? null,
+      status: tipo === 'aluguel' ? 'EM ABERTO' : 'FINALIZADO',
+      criado_por: session.profileId,
+    }
+  })
 
   const { error: itensError } = await supabase.from('itens_pedido').insert(itensPayload)
 

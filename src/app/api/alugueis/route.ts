@@ -3,6 +3,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
 import { todayISO } from '@/lib/utils'
 
+// GET /api/alugueis?data=YYYY-MM-DD — itens de aluguel EM ABERTO
 export async function GET(request: NextRequest) {
   const session = await getSession()
   if (!session.profileId) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     .select(`
       id, cliente_nome, telefone,
       itens_pedido(
-        id, hora_inicio, hora_fim, valor,
+        id, hora_inicio, hora_fim, valor, status,
         produtos(id, nome, tipo),
         planos(id, nome, tempo),
         vendedores(id, nome)
@@ -27,10 +28,9 @@ export async function GET(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Achata e filtra apenas itens de aluguel
   const alugueis = (pedidos ?? []).flatMap((p) =>
     ((p.itens_pedido as any[]) ?? [])
-      .filter((item) => item.produtos?.tipo === 'aluguel')
+      .filter((item) => item.produtos?.tipo === 'aluguel' && item.status === 'EM ABERTO')
       .map((item) => ({
         id: item.id,
         cliente_nome: p.cliente_nome,
@@ -45,8 +45,46 @@ export async function GET(request: NextRequest) {
       })),
   )
 
-  // Ordena por hora_fim (quem termina primeiro aparece primeiro)
   alugueis.sort((a, b) => (a.hora_fim ?? '99:99').localeCompare(b.hora_fim ?? '99:99'))
 
   return NextResponse.json({ alugueis, data })
+}
+
+// PATCH /api/alugueis — finaliza um item e, se necessário, o pedido
+export async function PATCH(request: NextRequest) {
+  const session = await getSession()
+  if (!session.profileId) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
+
+  const { item_id } = await request.json()
+  if (!item_id) return NextResponse.json({ error: 'item_id obrigatório.' }, { status: 400 })
+
+  const supabase = createServerClient()
+
+  // Finaliza o item
+  const { data: item, error: itemError } = await supabase
+    .from('itens_pedido')
+    .update({ status: 'FINALIZADO' })
+    .eq('id', item_id)
+    .select('pedido_id')
+    .single()
+
+  if (itemError || !item) {
+    return NextResponse.json({ error: itemError?.message ?? 'Item não encontrado.' }, { status: 500 })
+  }
+
+  // Verifica se o pedido ainda tem itens EM ABERTO
+  const { count } = await supabase
+    .from('itens_pedido')
+    .select('*', { count: 'exact', head: true })
+    .eq('pedido_id', item.pedido_id)
+    .eq('status', 'EM ABERTO')
+
+  if (count === 0) {
+    await supabase
+      .from('pedidos')
+      .update({ status: 'FINALIZADO' })
+      .eq('id', item.pedido_id)
+  }
+
+  return NextResponse.json({ ok: true })
 }

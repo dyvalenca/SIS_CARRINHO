@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Clock, RefreshCw, Loader2, Plus, UserCheck, MessageCircle } from 'lucide-react'
+import { Clock, RefreshCw, Loader2, Plus, UserCheck, MessageCircle, CheckSquare } from 'lucide-react'
 import Link from 'next/link'
 import { formatCurrency, todayISO } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -58,6 +58,8 @@ export default function AlugueisPage() {
   const [data, setData] = useState(dataParam)
   const [loading, setLoading] = useState(true)
   const [horaAtual, setHoraAtual] = useState('')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [finalizando, setFinalizando] = useState(false)
 
   const carregar = useCallback((d: string) => {
     setLoading(true)
@@ -82,6 +84,22 @@ export default function AlugueisPage() {
     const id = setInterval(tick, 60_000)
     return () => clearInterval(id)
   }, [])
+
+  async function handleFinalizar() {
+    if (!selectedId) return
+    setFinalizando(true)
+    try {
+      await fetch('/api/alugueis', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_id: selectedId }),
+      })
+      setSelectedId(null)
+      carregar(data)
+    } finally {
+      setFinalizando(false)
+    }
+  }
 
   function handleDataChange(novaData: string) {
     setData(novaData)
@@ -111,6 +129,15 @@ export default function AlugueisPage() {
           />
           <button onClick={() => carregar(data)} className="btn-secondary" title="Atualizar">
             <RefreshCw className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleFinalizar}
+            disabled={!selectedId || finalizando}
+            className="btn-primary bg-green-600 hover:bg-green-700 disabled:opacity-40"
+          >
+            {finalizando
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Finalizando...</>
+              : <><CheckSquare className="w-4 h-4" /> Finalizar</>}
           </button>
           <Link href="/pedidos/novo" className="btn-primary">
             <Plus className="w-4 h-4" /> Novo Pedido
@@ -152,6 +179,7 @@ export default function AlugueisPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+                <th className="w-10 px-4 py-3"></th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Cliente</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Produto / Plano</th>
@@ -167,11 +195,20 @@ export default function AlugueisPage() {
                 const { label, cls } = statusConfig[st]
                 return (
                   <tr key={item.id} className={cn(
-                    'transition-colors',
+                    'transition-colors cursor-pointer',
                     st === 'ativo'      && 'bg-green-50 hover:bg-green-100',
                     st === 'terminando' && 'bg-orange-50 hover:bg-orange-100 animate-pulse',
                     st === 'encerrado'  && 'hover:bg-gray-50',
-                  )}>
+                    selectedId === item.id && 'ring-2 ring-inset ring-blue-400',
+                  )} onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-blue-600 cursor-pointer"
+                        checked={selectedId === item.id}
+                        onChange={() => setSelectedId(selectedId === item.id ? null : item.id)}
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <span className={cn('px-2 py-1 rounded-full text-xs font-semibold border', cls)}>
                         {label}
