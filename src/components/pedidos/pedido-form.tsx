@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, Trash2, Loader2, CheckCircle, AlertCircle, Info, Save, X,
@@ -124,28 +124,22 @@ export function PedidoForm({ produtos, planos, vendedores }: PedidoFormProps) {
     if (isCpfComplete(cpf)) buscarCliente(cleanCpf(cpf))
   }
 
-  // Auto-salva cliente quando status é not-found e nome+telefone preenchidos
-  useEffect(() => {
+  const handleTelefoneBlur = async () => {
     if (clienteStatus !== 'not-found') return
     if (!clienteNome.trim() || !telefone.trim()) return
-
-    const timer = setTimeout(async () => {
-      setClienteStatus('saving')
-      try {
-        const res = await fetch('/api/clientes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cpf: cleanCpf(cpf), nome: clienteNome.trim(), telefone }),
-        })
-        if (res.ok) setClienteStatus('saved')
-        else setClienteStatus('not-found')
-      } catch {
-        setClienteStatus('not-found')
-      }
-    }, 800)
-
-    return () => clearTimeout(timer)
-  }, [clienteStatus, clienteNome, telefone, cpf])
+    setClienteStatus('saving')
+    try {
+      const res = await fetch('/api/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cpf: cleanCpf(cpf), nome: clienteNome.trim(), telefone }),
+      })
+      if (res.ok) setClienteStatus('saved')
+      else setClienteStatus('not-found')
+    } catch {
+      setClienteStatus('not-found')
+    }
+  }
 
   const clearCliente = () => {
     setCpf('')
@@ -386,6 +380,7 @@ export function PedidoForm({ produtos, planos, vendedores }: PedidoFormProps) {
               type="text"
               value={telefone}
               onChange={(e) => setTelefone(maskTelefone(e.target.value))}
+              onBlur={handleTelefoneBlur}
               placeholder="(00) 00000-0000"
               className={cn(
                 'input',
