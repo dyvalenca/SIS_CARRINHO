@@ -26,14 +26,13 @@ function statusAluguel(horaInicio: string | null, horaFim: string | null) {
     const [h, m] = hhmm.split(':').map(Number)
     return h * 60 + m
   }
-  if (!horaInicio) return 'pendente'
   if (horaFim) {
     const fimMin = toMin(horaFim)
     if (totalMin > fimMin) return 'encerrado'
-    if (totalMin >= toMin(horaInicio) && fimMin - totalMin <= 3) return 'terminando'
+    if (fimMin - totalMin <= 3) return 'terminando'
   }
-  if (totalMin >= toMin(horaInicio)) return 'ativo'
-  return 'pendente'
+  if (horaInicio && totalMin >= toMin(horaInicio)) return 'ativo'
+  return 'ativo' // sem horário definido considera em andamento
 }
 
 function whatsappUrl(telefone: string) {
@@ -46,7 +45,6 @@ function whatsappUrl(telefone: string) {
 const statusConfig = {
   ativo:      { label: 'Em andamento', cls: 'bg-green-100 text-green-800 border-green-200' },
   terminando: { label: 'Terminando',   cls: 'bg-orange-100 text-orange-800 border-orange-300' },
-  pendente:   { label: 'Aguardando',   cls: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
   encerrado:  { label: 'Encerrado',    cls: 'bg-gray-100 text-gray-500 border-gray-200' },
 }
 
@@ -91,7 +89,6 @@ export default function AlugueisPage() {
 
   const ativos     = alugueis.filter((a) => statusAluguel(a.hora_inicio, a.hora_fim) === 'ativo')
   const terminando = alugueis.filter((a) => statusAluguel(a.hora_inicio, a.hora_fim) === 'terminando')
-  const pendentes  = alugueis.filter((a) => statusAluguel(a.hora_inicio, a.hora_fim) === 'pendente')
   const encerrados = alugueis.filter((a) => statusAluguel(a.hora_inicio, a.hora_fim) === 'encerrado')
 
   return (
@@ -121,7 +118,7 @@ export default function AlugueisPage() {
       </div>
 
       {/* Resumo */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div className="card p-4 border-l-4 border-green-500">
           <p className="text-xs text-gray-500 uppercase font-semibold">Em andamento</p>
           <p className="text-3xl font-bold text-green-700 mt-1">{ativos.length}</p>
@@ -130,11 +127,7 @@ export default function AlugueisPage() {
           <p className="text-xs text-gray-500 uppercase font-semibold">Terminando</p>
           <p className="text-3xl font-bold text-orange-600 mt-1">{terminando.length}</p>
         </div>
-        <div className="card p-4 border-l-4 border-yellow-400">
-          <p className="text-xs text-gray-500 uppercase font-semibold">Aguardando</p>
-          <p className="text-3xl font-bold text-yellow-600 mt-1">{pendentes.length}</p>
-        </div>
-        <div className="card p-4 border-l-4 border-gray-300">
+<div className="card p-4 border-l-4 border-gray-300">
           <p className="text-xs text-gray-500 uppercase font-semibold">Encerrados</p>
           <p className="text-3xl font-bold text-gray-500 mt-1">{encerrados.length}</p>
         </div>
@@ -176,7 +169,7 @@ export default function AlugueisPage() {
                     'transition-colors',
                     st === 'ativo'      && 'bg-green-50 hover:bg-green-100',
                     st === 'terminando' && 'bg-orange-50 hover:bg-orange-100 animate-pulse',
-                    (st === 'pendente' || st === 'encerrado') && 'hover:bg-gray-50',
+                    st === 'encerrado'  && 'hover:bg-gray-50',
                   )}>
                     <td className="px-4 py-3">
                       <span className={cn('px-2 py-1 rounded-full text-xs font-semibold border', cls)}>
