@@ -35,45 +35,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Login ou senha inválidos.' }, { status: 401 })
     }
 
-    // 2. Carrega dados do profile
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, login, is_admin, ativo, vendedor_id')
-      .eq('id', profileId)
-      .single()
+    // 2. Carrega dados do profile via RPC (SECURITY DEFINER — bypassa RLS)
+    const { data: profileRows, error: profileError } = await supabase
+      .rpc('fn_get_profile', { p_profile_id: profileId })
 
-    console.log('[login] profile:', { profile, profileError })
+    console.log('[login] profile:', { profileRows, profileError })
 
     if (profileError) {
       return NextResponse.json({ error: `Erro profile: ${profileError.message}` }, { status: 500 })
     }
 
+    const profile = profileRows?.[0] ?? null
+
     if (!profile || !profile.ativo) {
       return NextResponse.json({ error: 'Usuário inativo.' }, { status: 403 })
     }
 
-    // 3. Carrega empresas acessíveis
-    let empresas: Empresa[] = []
+    // 3. Carrega empresas acessíveis via RPC (SECURITY DEFINER — bypassa RLS)
+    const { data: empresasData, error: empError } = await supabase
+      .rpc('fn_get_empresas_usuario', { p_profile_id: profileId, p_is_admin: profile.is_admin })
 
-    if (profile.is_admin) {
-      const { data, error: empError } = await supabase
-        .from('empresas')
-        .select('id, nome, fantasia, ativo')
-        .eq('ativo', true)
-        .order('nome')
-      console.log('[login] empresas admin:', { count: data?.length, empError })
-      empresas = data ?? []
-    } else {
-      const { data, error: empError } = await supabase
-        .from('empresas')
-        .select('id, nome, fantasia, ativo, usuario_empresa!inner(ativo)')
-        .eq('ativo', true)
-        .eq('usuario_empresa.usuario_id', profileId)
-        .eq('usuario_empresa.ativo', true)
-        .order('nome')
-      console.log('[login] empresas usuario:', { count: data?.length, empError })
-      empresas = data ?? []
-    }
+    console.log('[login] empresas:', { count: empresasData?.length, empError })
+    const empresas: Empresa[] = empresasData ?? []
 
     if (empresas.length === 0) {
       return NextResponse.json(
