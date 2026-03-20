@@ -1,0 +1,21 @@
+# Variáveis de ambiente — NUNCA commitar
+.env.local
+.env*.local
+
+# Next.js
+.next/
+out/
+
+# Dependências
+node_modules/
+
+# Build
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
