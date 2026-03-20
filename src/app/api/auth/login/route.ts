@@ -42,14 +42,14 @@ export async function POST(request: NextRequest) {
   if (profile.is_admin) {
     const { data } = await supabase
       .from('empresas')
-      .select('id, nome, fantasia')
+      .select('id, nome, fantasia, ativo')
       .eq('ativo', true)
       .order('nome')
     empresas = data ?? []
   } else {
     const { data } = await supabase
       .from('empresas')
-      .select('id, nome, fantasia, usuario_empresa!inner(ativo)')
+      .select('id, nome, fantasia, ativo, usuario_empresa!inner(ativo)')
       .eq('ativo', true)
       .eq('usuario_empresa.usuario_id', profileId)
       .eq('usuario_empresa.ativo', true)
