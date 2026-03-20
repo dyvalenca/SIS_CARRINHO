@@ -8,8 +8,13 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServerClient()
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .rpc('fn_get_empresas_by_login', { p_login: login.trim() })
+
+  if (error) {
+    console.error('[empresas] rpc error:', error)
+    return NextResponse.json({ empresas: [], rpc_error: error.message })
+  }
 
   const empresas = (data ?? []).map((e: { id: string; nome: string; fantasia?: string }) => ({
     id: e.id,
@@ -17,5 +22,6 @@ export async function POST(request: NextRequest) {
     fantasia: e.fantasia ?? e.nome,
   }))
 
+  console.log('[empresas] login:', login.trim(), '→', empresas.length, 'empresa(s)')
   return NextResponse.json({ empresas })
 }
