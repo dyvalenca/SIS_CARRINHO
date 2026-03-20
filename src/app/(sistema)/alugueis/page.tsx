@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Clock, RefreshCw, Loader2, Plus, UserCheck } from 'lucide-react'
+import { Clock, RefreshCw, Loader2, Plus, UserCheck, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
 import { formatCurrency, todayISO } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -21,17 +21,33 @@ interface AluguelItem {
 
 function statusAluguel(horaInicio: string | null, horaFim: string | null) {
   const agora = new Date()
-  const hhmm = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`
+  const totalMin = agora.getHours() * 60 + agora.getMinutes()
+  const toMin = (hhmm: string) => {
+    const [h, m] = hhmm.split(':').map(Number)
+    return h * 60 + m
+  }
   if (!horaInicio) return 'pendente'
-  if (horaFim && hhmm > horaFim) return 'encerrado'
-  if (hhmm >= horaInicio) return 'ativo'
+  if (horaFim) {
+    const fimMin = toMin(horaFim)
+    if (totalMin > fimMin) return 'encerrado'
+    if (totalMin >= toMin(horaInicio) && fimMin - totalMin <= 3) return 'terminando'
+  }
+  if (totalMin >= toMin(horaInicio)) return 'ativo'
   return 'pendente'
 }
 
+function whatsappUrl(telefone: string) {
+  const numero = telefone.replace(/\D/g, '')
+  const com55 = numero.startsWith('55') ? numero : `55${numero}`
+  const msg = encodeURIComponent('Faltam menos de 3 minutos para o aluguel terminar')
+  return `https://wa.me/${com55}?text=${msg}`
+}
+
 const statusConfig = {
-  ativo:     { label: 'Em andamento', cls: 'bg-green-100 text-green-800 border-green-200' },
-  pendente:  { label: 'Aguardando',   cls: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-  encerrado: { label: 'Encerrado',    cls: 'bg-gray-100 text-gray-500 border-gray-200' },
+  ativo:      { label: 'Em andamento', cls: 'bg-green-100 text-green-800 border-green-200' },
+  terminando: { label: 'Terminando',   cls: 'bg-orange-100 text-orange-800 border-orange-300' },
+  pendente:   { label: 'Aguardando',   cls: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  encerrado:  { label: 'Encerrado',    cls: 'bg-gray-100 text-gray-500 border-gray-200' },
 }
 
 export default function AlugueisPage() {
@@ -73,8 +89,9 @@ export default function AlugueisPage() {
     router.replace(`/alugueis?data=${novaData}`)
   }
 
-  const ativos    = alugueis.filter((a) => statusAluguel(a.hora_inicio, a.hora_fim) === 'ativo')
-  const pendentes = alugueis.filter((a) => statusAluguel(a.hora_inicio, a.hora_fim) === 'pendente')
+  const ativos     = alugueis.filter((a) => statusAluguel(a.hora_inicio, a.hora_fim) === 'ativo')
+  const terminando = alugueis.filter((a) => statusAluguel(a.hora_inicio, a.hora_fim) === 'terminando')
+  const pendentes  = alugueis.filter((a) => statusAluguel(a.hora_inicio, a.hora_fim) === 'pendente')
   const encerrados = alugueis.filter((a) => statusAluguel(a.hora_inicio, a.hora_fim) === 'encerrado')
 
   return (
@@ -104,10 +121,14 @@ export default function AlugueisPage() {
       </div>
 
       {/* Resumo */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         <div className="card p-4 border-l-4 border-green-500">
           <p className="text-xs text-gray-500 uppercase font-semibold">Em andamento</p>
           <p className="text-3xl font-bold text-green-700 mt-1">{ativos.length}</p>
+        </div>
+        <div className="card p-4 border-l-4 border-orange-400">
+          <p className="text-xs text-gray-500 uppercase font-semibold">Terminando</p>
+          <p className="text-3xl font-bold text-orange-600 mt-1">{terminando.length}</p>
         </div>
         <div className="card p-4 border-l-4 border-yellow-400">
           <p className="text-xs text-gray-500 uppercase font-semibold">Aguardando</p>
@@ -151,7 +172,12 @@ export default function AlugueisPage() {
                 const st = statusAluguel(item.hora_inicio, item.hora_fim)
                 const { label, cls } = statusConfig[st]
                 return (
-                  <tr key={item.id} className={cn('transition-colors', st === 'ativo' ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50')}>
+                  <tr key={item.id} className={cn(
+                    'transition-colors',
+                    st === 'ativo'      && 'bg-green-50 hover:bg-green-100',
+                    st === 'terminando' && 'bg-orange-50 hover:bg-orange-100 animate-pulse',
+                    (st === 'pendente' || st === 'encerrado') && 'hover:bg-gray-50',
+                  )}>
                     <td className="px-4 py-3">
                       <span className={cn('px-2 py-1 rounded-full text-xs font-semibold border', cls)}>
                         {label}
@@ -159,7 +185,20 @@ export default function AlugueisPage() {
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{item.cliente_nome}</p>
-                      {item.telefone && <p className="text-xs text-gray-500">{item.telefone}</p>}
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {item.telefone && <span className="text-xs text-gray-500">{item.telefone}</span>}
+                        {st === 'terminando' && item.telefone && (
+                          <a
+                            href={whatsappUrl(item.telefone)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors"
+                            title="Avisar pelo WhatsApp"
+                          >
+                            <MessageCircle className="w-3 h-3" /> WhatsApp
+                          </a>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{item.produto}</p>
