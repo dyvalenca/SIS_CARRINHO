@@ -44,8 +44,8 @@ export async function GET(request: NextRequest) {
       })),
   )
 
-  // Ordena por hora_inicio
-  alugueis.sort((a, b) => (a.hora_inicio ?? '').localeCompare(b.hora_inicio ?? ''))
+  // Ordena por hora_fim (quem termina primeiro aparece primeiro)
+  alugueis.sort((a, b) => (a.hora_fim ?? '99:99').localeCompare(b.hora_fim ?? '99:99'))
 
   return NextResponse.json({ alugueis, data })
 }
