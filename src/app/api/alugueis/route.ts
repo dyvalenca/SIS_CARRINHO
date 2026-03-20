@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     .select(`
       id, cliente_nome, telefone,
       itens_pedido(
-        id, hora_inicio, hora_fim, valor, status,
+        id, hora_inicio, hora_fim, valor, status, tolerancia,
         produtos(id, nome, tipo),
         planos(id, nome, tempo),
         vendedores(id, nome)
@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
         produto: item.produtos?.nome ?? '—',
         plano: item.planos?.nome ?? '—',
         plano_tempo: item.planos?.tempo ?? null,
+        tolerancia: item.tolerancia ?? 0,
         hora_inicio: item.hora_inicio,
         hora_fim: item.hora_fim,
         valor: item.valor,
