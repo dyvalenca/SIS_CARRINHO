@@ -39,22 +39,23 @@ COMMENT ON COLUMN empresas.fantasia   IS 'Nome fantasia da empresa';
 -- TABELA: profiles (espelho de auth.users com dados extras)
 -- =============================================================================
 CREATE TABLE profiles (
-    id          UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    nome        VARCHAR(200) NOT NULL,
-    cpf         VARCHAR(14)  UNIQUE,
-    telefone    VARCHAR(20),
-    is_admin    BOOLEAN      NOT NULL DEFAULT FALSE,
-    ativo       BOOLEAN      NOT NULL DEFAULT TRUE,
+    id           UUID     PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    vendedor_id  UUID,    -- FK adicionada após criar vendedores (ver migration 002)
+    is_admin     BOOLEAN  NOT NULL DEFAULT FALSE,
+    ativo        BOOLEAN  NOT NULL DEFAULT TRUE,
+    senha        TEXT,    -- hash bcrypt via pgcrypto — ver fn_set_senha()
 
     -- Auditoria
-    criado_por  UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-    criado_em   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    criado_por   UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    criado_em    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     alterado_por UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-    alterado_em TIMESTAMPTZ
+    alterado_em  TIMESTAMPTZ
 );
 
-COMMENT ON TABLE  profiles          IS 'Perfis de usuário — espelho de auth.users';
-COMMENT ON COLUMN profiles.is_admin IS 'Admin pode acessar qualquer empresa sem vínculo explícito';
+COMMENT ON TABLE  profiles             IS 'Perfis de acesso ao sistema — dados pessoais ficam em vendedores';
+COMMENT ON COLUMN profiles.vendedor_id IS 'Associa o login ao cadastro do vendedor — admin pode ficar NULL';
+COMMENT ON COLUMN profiles.is_admin    IS 'Admin pode acessar qualquer empresa sem vínculo explícito';
+COMMENT ON COLUMN profiles.senha       IS 'Hash bcrypt — use fn_set_senha() para gravar e fn_verificar_senha() para autenticar';
 
 -- =============================================================================
 -- TABELA: usuario_empresa (controle de acesso usuário ↔ empresa)
