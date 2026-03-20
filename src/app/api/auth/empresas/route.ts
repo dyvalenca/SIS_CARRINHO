@@ -8,20 +8,10 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServerClient()
 
-  // Busca o profile pelo login (RLS aberto — USING true)
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, is_admin, ativo')
-    .ilike('login', login.trim())
-    .eq('ativo', true)
-    .single()
+  const { data } = await supabase
+    .rpc('fn_get_empresas_by_login', { p_login: login.trim() })
 
-  if (!profile || !profile.ativo) return NextResponse.json({ empresas: [] })
-
-  const { data: empresasData } = await supabase
-    .rpc('fn_get_empresas_usuario', { p_profile_id: profile.id, p_is_admin: profile.is_admin })
-
-  const empresas = (empresasData ?? []).map((e: { id: string; nome: string; fantasia?: string }) => ({
+  const empresas = (data ?? []).map((e: { id: string; nome: string; fantasia?: string }) => ({
     id: e.id,
     nome: e.nome,
     fantasia: e.fantasia ?? e.nome,
