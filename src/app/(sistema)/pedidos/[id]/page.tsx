@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase/server'
-import Link from 'next/link'
-import { ArrowLeft, Clock, UserCheck } from 'lucide-react'
+import { Clock, UserCheck } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { BackButton } from '@/components/ui/back-button'
 
 const statusPedidoConfig: Record<string, { label: string; cls: string }> = {
   'EM ABERTO':  { label: 'Em Aberto',  cls: 'bg-blue-50 text-blue-700' },
@@ -64,9 +64,7 @@ export default async function PedidoViewPage({
       {/* Cabeçalho */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/pedidos" className="btn-secondary p-2">
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
+          <BackButton />
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Pedido</h1>
             <p className="text-sm text-gray-500">{formatDate(pedido.data)} · {hora}</p>
@@ -204,9 +202,7 @@ export default async function PedidoViewPage({
 
       {/* Rodapé */}
       <div className="flex justify-start pb-6">
-        <Link href="/pedidos" className="btn-secondary">
-          <ArrowLeft className="w-4 h-4" /> Voltar
-        </Link>
+        <BackButton />
       </div>
     </div>
   )
