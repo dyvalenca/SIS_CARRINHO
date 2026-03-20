@@ -20,20 +20,30 @@ interface AluguelItem {
   vendedor: string | null
 }
 
-function statusAluguel(horaInicio: string | null, horaFim: string | null) {
+const toMin = (hhmm: string) => {
+  const [h, m] = hhmm.split(':').map(Number)
+  return h * 60 + m
+}
+
+function agoraMin() {
   const agora = new Date()
-  const totalMin = agora.getHours() * 60 + agora.getMinutes()
-  const toMin = (hhmm: string) => {
-    const [h, m] = hhmm.split(':').map(Number)
-    return h * 60 + m
-  }
+  return agora.getHours() * 60 + agora.getMinutes()
+}
+
+function statusAluguel(horaInicio: string | null, horaFim: string | null) {
+  const now = agoraMin()
   if (horaFim) {
     const fimMin = toMin(horaFim)
-    if (totalMin > fimMin) return 'encerrado'
-    if (fimMin - totalMin <= 3) return 'terminando'
+    if (now > fimMin) return 'expirado'
+    if (fimMin - now <= 3) return 'terminando'
   }
-  if (horaInicio && totalMin >= toMin(horaInicio)) return 'ativo'
-  return 'ativo' // sem horário definido considera em andamento
+  if (horaInicio && now >= toMin(horaInicio)) return 'ativo'
+  return 'ativo'
+}
+
+function minutosExpirado(horaFim: string | null): number {
+  if (!horaFim) return 0
+  return Math.max(0, agoraMin() - toMin(horaFim))
 }
 
 function whatsappUrl(telefone: string) {
@@ -46,7 +56,7 @@ function whatsappUrl(telefone: string) {
 const statusConfig = {
   ativo:      { label: 'Em andamento', cls: 'bg-green-100 text-green-800 border-green-200' },
   terminando: { label: 'Terminando',   cls: 'bg-orange-100 text-orange-800 border-orange-300' },
-  encerrado:  { label: 'Encerrado',    cls: 'bg-gray-100 text-gray-500 border-gray-200' },
+  expirado:   { label: 'Expirado',     cls: 'bg-red-100 text-red-700 border-red-200' },
 }
 
 export default function AlugueisPage() {
@@ -87,6 +97,15 @@ export default function AlugueisPage() {
 
   async function handleFinalizar() {
     if (!selectedId) return
+    const item = alugueis.find((a) => a.id === selectedId)
+    if (!item) return
+
+    const st = statusAluguel(item.hora_inicio, item.hora_fim)
+    if (st === 'ativo') {
+      const ok = window.confirm('Este aluguel ainda está em andamento. Deseja realmente finalizá-lo?')
+      if (!ok) return
+    }
+
     setFinalizando(true)
     try {
       await fetch('/api/alugueis', {
@@ -108,7 +127,7 @@ export default function AlugueisPage() {
 
   const ativos     = alugueis.filter((a) => statusAluguel(a.hora_inicio, a.hora_fim) === 'ativo')
   const terminando = alugueis.filter((a) => statusAluguel(a.hora_inicio, a.hora_fim) === 'terminando')
-  const encerrados = alugueis.filter((a) => statusAluguel(a.hora_inicio, a.hora_fim) === 'encerrado')
+  const expirados  = alugueis.filter((a) => statusAluguel(a.hora_inicio, a.hora_fim) === 'expirado')
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
@@ -155,9 +174,9 @@ export default function AlugueisPage() {
           <p className="text-xs text-gray-500 uppercase font-semibold">Terminando</p>
           <p className="text-3xl font-bold text-orange-600 mt-1">{terminando.length}</p>
         </div>
-<div className="card p-4 border-l-4 border-gray-300">
-          <p className="text-xs text-gray-500 uppercase font-semibold">Encerrados</p>
-          <p className="text-3xl font-bold text-gray-500 mt-1">{encerrados.length}</p>
+        <div className="card p-4 border-l-4 border-red-400">
+          <p className="text-xs text-gray-500 uppercase font-semibold">Expirados</p>
+          <p className="text-3xl font-bold text-red-600 mt-1">{expirados.length}</p>
         </div>
       </div>
 
@@ -185,6 +204,7 @@ export default function AlugueisPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Produto / Plano</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Início</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Fim</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Expirado há</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Valor</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Vendedor</th>
               </tr>
@@ -198,7 +218,7 @@ export default function AlugueisPage() {
                     'transition-colors cursor-pointer',
                     st === 'ativo'      && 'bg-green-50 hover:bg-green-100',
                     st === 'terminando' && 'bg-orange-50 hover:bg-orange-100 animate-pulse',
-                    st === 'encerrado'  && 'hover:bg-gray-50',
+                    st === 'expirado'   && 'bg-red-50 hover:bg-red-100',
                     selectedId === item.id && 'ring-2 ring-inset ring-blue-400',
                   )} onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -245,6 +265,11 @@ export default function AlugueisPage() {
                     </td>
                     <td className="px-4 py-3 font-mono text-sm text-gray-700">
                       {item.hora_fim ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {st === 'expirado'
+                        ? <span className="font-semibold text-red-600">{minutosExpirado(item.hora_fim)} min</span>
+                        : <span className="text-gray-300">—</span>}
                     </td>
                     <td className="px-4 py-3 text-right font-bold text-gray-900">
                       {formatCurrency(item.valor)}
