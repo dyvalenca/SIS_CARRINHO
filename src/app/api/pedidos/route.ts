@@ -85,9 +85,9 @@ export async function POST(request: NextRequest) {
   const pedidoStatus = temAluguel ? 'EM ABERTO' : 'FINALIZADO'
 
   // Busca snapshot dos planos para copiar tolerância para os itens
-  const planoIds = [...new Set(
+  const planoIds = Array.from(new Set<string>(
     itens.map((i: Record<string, unknown>) => i.plano_id as string).filter(Boolean)
-  )]
+  ))
   const { data: planosInfo } = planoIds.length
     ? await supabase
         .from('planos')
