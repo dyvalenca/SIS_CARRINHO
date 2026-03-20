@@ -8,13 +8,12 @@ import { formatCurrency, formatDate, todayISO } from '@/lib/utils'
 export default async function PedidosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ data?: string }>
+  searchParams: { data?: string }
 }) {
   const session = await getSession()
   if (!session.profileId) redirect('/login')
 
-  const params = await searchParams
-  const dataFiltro = params.data ?? todayISO()
+  const dataFiltro = searchParams.data ?? todayISO()
 
   const supabase = createServerClient()
   const { data: pedidos } = await supabase

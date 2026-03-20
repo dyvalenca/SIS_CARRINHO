@@ -65,8 +65,8 @@ export async function POST(request: NextRequest) {
   }
 
   // 4. Grava sessão
-  const cookieStore = await cookies()
-  const session = await getIronSession<SessionData>(cookieStore, sessionOptions)
+  const cookieStore = cookies()
+  const session = await getIronSession<SessionData>(cookieStore as Parameters<typeof getIronSession>[0], sessionOptions)
 
   session.profileId = profileId
   session.login = profile.login
