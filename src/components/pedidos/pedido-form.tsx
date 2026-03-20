@@ -25,7 +25,7 @@ interface ItemForm {
   hora_fim: string
 }
 
-type ClienteStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'saving' | 'saved'
+type ClienteStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'saving' | 'saved' | 'error'
 
 const emptyItem = (): ItemForm => ({
   _key: generateKey(),
@@ -60,6 +60,7 @@ export function PedidoForm({ produtos, planos, vendedores }: PedidoFormProps) {
   const [clienteNome, setClienteNome] = useState('')
   const [telefone, setTelefone] = useState('')
   const [clienteStatus, setClienteStatus] = useState<ClienteStatus>('idle')
+  const [clienteSaveError, setClienteSaveError] = useState('')
 
   // Itens
   const [itens, setItens] = useState<ItemForm[]>([emptyItem()])
@@ -127,6 +128,7 @@ export function PedidoForm({ produtos, planos, vendedores }: PedidoFormProps) {
   const handleTelefoneBlur = async () => {
     if (clienteStatus !== 'not-found') return
     if (!clienteNome.trim() || !telefone.trim()) return
+    setClienteSaveError('')
     setClienteStatus('saving')
     try {
       const res = await fetch('/api/clientes', {
@@ -134,10 +136,16 @@ export function PedidoForm({ produtos, planos, vendedores }: PedidoFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cpf: cleanCpf(cpf), nome: clienteNome.trim(), telefone }),
       })
-      if (res.ok) setClienteStatus('saved')
-      else setClienteStatus('not-found')
-    } catch {
-      setClienteStatus('not-found')
+      const result = await res.json()
+      if (res.ok) {
+        setClienteStatus('saved')
+      } else {
+        setClienteSaveError(result.error ?? 'Erro ao cadastrar cliente.')
+        setClienteStatus('error')
+      }
+    } catch (err) {
+      setClienteSaveError(`Erro de conexão: ${err instanceof Error ? err.message : String(err)}`)
+      setClienteStatus('error')
     }
   }
 
@@ -146,6 +154,7 @@ export function PedidoForm({ produtos, planos, vendedores }: PedidoFormProps) {
     setClienteNome('')
     setTelefone('')
     setClienteStatus('idle')
+    setClienteSaveError('')
   }
 
   // ── Gestão de itens ─────────────────────────────────────────────────────────
@@ -371,6 +380,7 @@ export function PedidoForm({ produtos, planos, vendedores }: PedidoFormProps) {
               disabled={clienteStatus === 'loading' || clienteStatus === 'saving'}
             />
             {errors.clienteNome && <p className="text-xs text-red-500 mt-1">{errors.clienteNome}</p>}
+            {clienteSaveError && <p className="text-xs text-red-500 mt-1">{clienteSaveError}</p>}
           </div>
 
           {/* Telefone */}
@@ -756,6 +766,11 @@ function ClienteStatusBadge({ status }: { status: ClienteStatus }) {
     'not-found': {
       text: 'Cliente não localizado',
       cls: 'text-orange-700 bg-orange-50 border-orange-200',
+      icon: AlertCircle,
+    },
+    error: {
+      text: 'Erro ao cadastrar',
+      cls: 'text-red-700 bg-red-50 border-red-200',
       icon: AlertCircle,
     },
     saving: {

@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    return NextResponse.json({ error: 'Erro ao cadastrar cliente.' }, { status: 500 })
+    console.error('[clientes POST] erro supabase:', error)
+    return NextResponse.json({ error: `Erro ao cadastrar cliente: ${error.message}` }, { status: 500 })
   }
 
   return NextResponse.json({ cliente: data }, { status: 201 })
