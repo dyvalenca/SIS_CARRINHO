@@ -6,85 +6,112 @@ import { sessionOptions } from '@/lib/session'
 import { SessionData, Empresa } from '@/lib/types'
 
 export async function POST(request: NextRequest) {
-  const body = await request.json()
-  const { login, senha } = body as { login: string; senha: string }
+  try {
+    const body = await request.json()
+    const { login, senha } = body as { login: string; senha: string }
 
-  if (!login || !senha) {
-    return NextResponse.json({ error: 'Login e senha são obrigatórios.' }, { status: 400 })
-  }
+    console.log('[login] tentativa:', login)
 
-  const supabase = createServerClient()
+    if (!login || !senha) {
+      return NextResponse.json({ error: 'Login e senha são obrigatórios.' }, { status: 400 })
+    }
 
-  // 1. Valida credenciais via fn_login
-  const { data: profileId, error: rpcError } = await supabase.rpc('fn_login', {
-    p_login: login.trim().toLowerCase(),
-    p_senha_plain: senha,
-  })
+    const supabase = createServerClient()
+    console.log('[login] supabase client criado')
 
-  if (rpcError || !profileId) {
-    return NextResponse.json({ error: 'Login ou senha inválidos.' }, { status: 401 })
-  }
+    // 1. Valida credenciais via fn_login
+    const { data: profileId, error: rpcError } = await supabase.rpc('fn_login', {
+      p_login: login.trim().toLowerCase(),
+      p_senha_plain: senha,
+    })
 
-  // 2. Carrega dados do profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, login, is_admin, ativo, vendedor_id')
-    .eq('id', profileId)
-    .single()
+    console.log('[login] fn_login resultado:', { profileId, rpcError })
 
-  if (!profile || !profile.ativo) {
-    return NextResponse.json({ error: 'Usuário inativo.' }, { status: 403 })
-  }
+    if (rpcError) {
+      return NextResponse.json({ error: `Erro RPC: ${rpcError.message}` }, { status: 500 })
+    }
 
-  // 3. Carrega empresas acessíveis
-  let empresas: Empresa[] = []
+    if (!profileId) {
+      return NextResponse.json({ error: 'Login ou senha inválidos.' }, { status: 401 })
+    }
 
-  if (profile.is_admin) {
-    const { data } = await supabase
-      .from('empresas')
-      .select('id, nome, fantasia, ativo')
-      .eq('ativo', true)
-      .order('nome')
-    empresas = data ?? []
-  } else {
-    const { data } = await supabase
-      .from('empresas')
-      .select('id, nome, fantasia, ativo, usuario_empresa!inner(ativo)')
-      .eq('ativo', true)
-      .eq('usuario_empresa.usuario_id', profileId)
-      .eq('usuario_empresa.ativo', true)
-      .order('nome')
-    empresas = data ?? []
-  }
+    // 2. Carrega dados do profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, login, is_admin, ativo, vendedor_id')
+      .eq('id', profileId)
+      .single()
 
-  if (empresas.length === 0) {
+    console.log('[login] profile:', { profile, profileError })
+
+    if (profileError) {
+      return NextResponse.json({ error: `Erro profile: ${profileError.message}` }, { status: 500 })
+    }
+
+    if (!profile || !profile.ativo) {
+      return NextResponse.json({ error: 'Usuário inativo.' }, { status: 403 })
+    }
+
+    // 3. Carrega empresas acessíveis
+    let empresas: Empresa[] = []
+
+    if (profile.is_admin) {
+      const { data, error: empError } = await supabase
+        .from('empresas')
+        .select('id, nome, fantasia, ativo')
+        .eq('ativo', true)
+        .order('nome')
+      console.log('[login] empresas admin:', { count: data?.length, empError })
+      empresas = data ?? []
+    } else {
+      const { data, error: empError } = await supabase
+        .from('empresas')
+        .select('id, nome, fantasia, ativo, usuario_empresa!inner(ativo)')
+        .eq('ativo', true)
+        .eq('usuario_empresa.usuario_id', profileId)
+        .eq('usuario_empresa.ativo', true)
+        .order('nome')
+      console.log('[login] empresas usuario:', { count: data?.length, empError })
+      empresas = data ?? []
+    }
+
+    if (empresas.length === 0) {
+      return NextResponse.json(
+        { error: 'Nenhuma empresa disponível para este usuário.' },
+        { status: 403 },
+      )
+    }
+
+    // 4. Grava sessão
+    console.log('[login] gravando sessão...')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const session = await getIronSession<SessionData>(cookies() as any, sessionOptions)
+
+    session.profileId = profileId
+    session.login = profile.login
+    session.isAdmin = profile.is_admin
+    session.vendedorId = profile.vendedor_id
+    session.empresaAtualId = empresas[0].id
+    session.empresas = empresas.map((e) => ({
+      id: e.id,
+      nome: e.nome,
+      fantasia: e.fantasia ?? e.nome,
+    }))
+
+    await session.save()
+    console.log('[login] sessão salva, ok')
+
+    return NextResponse.json({
+      ok: true,
+      isAdmin: profile.is_admin,
+      empresas: session.empresas,
+      empresaAtualId: session.empresaAtualId,
+    })
+  } catch (err) {
+    console.error('[login] ERRO INESPERADO:', err)
     return NextResponse.json(
-      { error: 'Nenhuma empresa disponível para este usuário.' },
-      { status: 403 },
+      { error: `Erro interno: ${err instanceof Error ? err.message : String(err)}` },
+      { status: 500 },
     )
   }
-
-  // 4. Grava sessão
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const session = await getIronSession<SessionData>(cookies() as any, sessionOptions)
-
-  session.profileId = profileId
-  session.login = profile.login
-  session.isAdmin = profile.is_admin
-  session.vendedorId = profile.vendedor_id
-  session.empresaAtualId = empresas[0].id
-  session.empresas = empresas.map((e) => ({
-    id: e.id,
-    nome: e.nome,
-    fantasia: e.fantasia ?? e.nome,
-  }))
-
-  await session.save()
-
-  return NextResponse.json({
-    ok: true,
-    isAdmin: profile.is_admin,
-    empresas: session.empresas,
-    empresaAtualId: session.empresaAtualId,
-  })
 }

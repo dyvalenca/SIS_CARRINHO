@@ -33,7 +33,7 @@ BEGIN
         'authenticated',
         'authenticated',
         'dyego@sistema.local',          -- e-mail interno, não usado no login
-        crypt('1234', gen_salt('bf', 10)),
+        crypt('123456', gen_salt('bf', 10)),
         NOW(),
         NOW(),
         NOW(),
@@ -63,7 +63,7 @@ BEGIN
     ON CONFLICT (id) DO NOTHING;
 
     RAISE NOTICE '✔ Seed concluído.';
-    RAISE NOTICE '  Admin criado  : login=dyego | senha=1234 | is_admin=TRUE';
+    RAISE NOTICE '  Admin criado  : login=dyego | senha=123456 | is_admin=TRUE';
     RAISE NOTICE '  Empresas      : QUISQUE 1, QUISQUE 2, QUISQUE 3';
 
 END;

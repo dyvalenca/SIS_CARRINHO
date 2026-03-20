@@ -24,17 +24,19 @@ export default function LoginPage() {
         body: JSON.stringify({ login: login.trim(), senha }),
       })
 
-      const data = await res.json()
+      const text = await res.text()
+      let data: { error?: string; ok?: boolean } = {}
+      try { data = JSON.parse(text) } catch { data = { error: text } }
 
       if (!res.ok) {
-        setError(data.error ?? 'Erro ao realizar login.')
+        setError(data.error ?? `Erro ${res.status}`)
         return
       }
 
       router.push('/pedidos/novo')
       router.refresh()
-    } catch {
-      setError('Erro de conexão. Tente novamente.')
+    } catch (err) {
+      setError(`Erro de conexão: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setLoading(false)
     }
