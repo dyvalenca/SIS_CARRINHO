@@ -27,7 +27,6 @@ export interface Produto {
 export interface Plano {
   id: string
   empresa_id: string
-  produto_id: string
   nome: string
   preco: number
   tempo: number

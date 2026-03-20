@@ -43,7 +43,7 @@ const emptyItem = (): ItemForm => ({
 
 interface PedidoFormProps {
   produtos: Pick<Produto, 'id' | 'nome' | 'tipo'>[]
-  planos: Pick<Plano, 'id' | 'produto_id' | 'nome' | 'preco' | 'tempo'>[]
+  planos: Pick<Plano, 'id' | 'nome' | 'preco' | 'tempo'>[]
   vendedores: Pick<Vendedor, 'id' | 'nome'>[]
   empresaId: string
   profileId: string
@@ -436,7 +436,7 @@ export function PedidoForm({ produtos, planos, vendedores }: PedidoFormProps) {
                   item={item}
                   idx={idx}
                   produtos={produtos}
-                  planos={planos.filter((p) => p.produto_id === item.produto_id)}
+                  planos={planos}
                   vendedores={vendedores}
                   errors={errors}
                   onProdutoChange={(id) => handleProdutoChange(item._key, id)}

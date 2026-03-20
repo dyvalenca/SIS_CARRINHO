@@ -18,7 +18,7 @@ export default async function NovoPedidoPage() {
       .order('nome'),
     supabase
       .from('planos')
-      .select('id, produto_id, nome, preco, tempo')
+      .select('id, nome, preco, tempo')
       .eq('empresa_id', session.empresaAtualId)
       .eq('ativo', true)
       .order('nome'),
