@@ -182,7 +182,20 @@ export function PedidoForm({ produtos, planos, vendedores }: PedidoFormProps) {
 
   const handlePlanoChange = (key: string, planoId: string) => {
     const plano = planos.find((p) => p.id === planoId)
-    updateItem(key, { plano_id: planoId, valor: plano?.preco ?? 0 })
+    if (!plano) { updateItem(key, { plano_id: '' }); return }
+
+    const now = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const horaInicio = `${pad(now.getHours())}:${pad(now.getMinutes())}`
+    const fim = new Date(now.getTime() + plano.tempo * 60_000)
+    const horaFim = `${pad(fim.getHours())}:${pad(fim.getMinutes())}`
+
+    updateItem(key, {
+      plano_id: planoId,
+      valor: plano.preco,
+      hora_inicio: horaInicio,
+      hora_fim: horaFim,
+    })
   }
 
   // ── Validação ───────────────────────────────────────────────────────────────
@@ -656,16 +669,15 @@ function ItemRow({
         />
       </td>
 
-      {/* Valor */}
+      {/* Valor — somente leitura, calculado pelo plano ou definido externamente */}
       <td className="py-2 pr-2">
         <input
           type="number"
-          min="0"
-          step="0.01"
           value={item.valor || ''}
-          onChange={(e) => onChange({ valor: parseFloat(e.target.value) || 0 })}
+          readOnly
+          tabIndex={-1}
           placeholder="0,00"
-          className={cn('input text-xs w-28', errors[`item_${idx}_valor`] && 'input-error')}
+          className={cn('input text-xs w-28 bg-gray-50 cursor-default', errors[`item_${idx}_valor`] && 'input-error')}
         />
       </td>
 
@@ -690,7 +702,7 @@ function ItemRow({
           value={item.hora_inicio}
           onChange={(e) => onChange({ hora_inicio: e.target.value })}
           disabled={!isServico}
-          className={cn('input text-xs w-24', !isServico && 'opacity-40')}
+          className={cn('input text-xs w-24', !isServico && 'opacity-40 bg-gray-50')}
         />
       </td>
 
@@ -701,7 +713,7 @@ function ItemRow({
           value={item.hora_fim}
           onChange={(e) => onChange({ hora_fim: e.target.value })}
           disabled={!isServico}
-          className={cn('input text-xs w-24', !isServico && 'opacity-40')}
+          className={cn('input text-xs w-24', !isServico && 'opacity-40 bg-gray-50')}
         />
       </td>
 
