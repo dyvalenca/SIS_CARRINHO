@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
       .filter((item) => item.produtos?.tipo === 'aluguel' && item.status === 'EM ABERTO')
       .map((item) => ({
         id: item.id,
+        pedido_id: p.id,
         cliente_nome: p.cliente_nome,
         telefone: p.telefone,
         produto: item.produtos?.nome ?? '—',

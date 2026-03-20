@@ -2,7 +2,7 @@ import { getSession } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, ShoppingCart } from 'lucide-react'
+import { Plus, ShoppingCart, Eye } from 'lucide-react'
 import { formatCurrency, formatDate, todayISO } from '@/lib/utils'
 import { FiltroData } from '@/components/pedidos/filtro-data'
 
@@ -59,6 +59,7 @@ export default async function PedidosPage({
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+                <th className="w-10 px-4 py-3"></th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Hora</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Cliente</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Itens</th>
@@ -81,6 +82,15 @@ export default async function PedidosPage({
 
                 return (
                   <tr key={pedido.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/pedidos/${pedido.id}`}
+                        className="p-1.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors inline-flex"
+                        title="Visualizar pedido"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Link>
+                    </td>
                     <td className="px-4 py-3 text-gray-500 font-mono text-xs">{hora}</td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{pedido.cliente_nome}</p>

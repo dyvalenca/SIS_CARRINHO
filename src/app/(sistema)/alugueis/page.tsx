@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Clock, RefreshCw, Loader2, Plus, UserCheck, MessageCircle, CheckSquare } from 'lucide-react'
+import { Clock, RefreshCw, Loader2, Plus, UserCheck, MessageCircle, CheckSquare, Eye } from 'lucide-react'
 import Link from 'next/link'
 import { formatCurrency, todayISO } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
 interface AluguelItem {
   id: string
+  pedido_id: string
   cliente_nome: string
   telefone: string | null
   produto: string
@@ -207,6 +208,7 @@ export default function AlugueisPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Expirado há</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Valor</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Vendedor</th>
+                <th className="w-10 px-4 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -278,6 +280,15 @@ export default function AlugueisPage() {
                       {item.vendedor
                         ? <span className="inline-flex items-center gap-1"><UserCheck className="w-3.5 h-3.5 text-gray-400" />{item.vendedor}</span>
                         : <span className="text-gray-400">—</span>}
+                    </td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <Link
+                        href={`/pedidos/${item.pedido_id}`}
+                        className="p-1.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors inline-flex"
+                        title="Visualizar pedido"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Link>
                     </td>
                   </tr>
                 )
