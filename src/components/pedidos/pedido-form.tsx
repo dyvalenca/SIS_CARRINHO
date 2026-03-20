@@ -16,7 +16,7 @@ import {
 interface ItemForm {
   _key: string
   produto_id: string
-  produto_tipo: 'venda' | 'servico' | ''
+  produto_tipo: 'venda' | 'aluguel' | ''
   plano_id: string
   vendedor_id: string
   quantidade: number
@@ -174,7 +174,7 @@ export function PedidoForm({ produtos, planos, vendedores }: PedidoFormProps) {
       produto_tipo: produto?.tipo ?? '',
       plano_id: '',
       valor: 0,
-      quantidade: produto?.tipo === 'servico' ? 1 : 1,
+      quantidade: produto?.tipo === 'aluguel' ? 1 : 1,
       hora_inicio: '',
       hora_fim: '',
     })
@@ -196,8 +196,8 @@ export function PedidoForm({ produtos, planos, vendedores }: PedidoFormProps) {
     itens.forEach((item, idx) => {
       if (!item.produto_id) errs[`item_${idx}_produto`] = 'Produto obrigatório'
       if (!item.valor || item.valor <= 0) errs[`item_${idx}_valor`] = 'Valor obrigatório'
-      if (item.produto_tipo === 'servico' && !item.plano_id)
-        errs[`item_${idx}_plano`] = 'Plano obrigatório para serviços'
+      if (item.produto_tipo === 'aluguel' && !item.plano_id)
+        errs[`item_${idx}_plano`] = 'Plano obrigatório para aluguéis'
       if (item.produto_tipo === 'venda' && (!item.quantidade || item.quantidade < 1))
         errs[`item_${idx}_qtd`] = 'Quantidade inválida'
     })
@@ -241,12 +241,12 @@ export function PedidoForm({ produtos, planos, vendedores }: PedidoFormProps) {
       troco,
       itens: itens.map((item) => ({
         produto_id: item.produto_id,
-        plano_id: item.produto_tipo === 'servico' ? item.plano_id || null : null,
+        plano_id: item.produto_tipo === 'aluguel' ? item.plano_id || null : null,
         vendedor_id: item.vendedor_id || null,
         quantidade: item.produto_tipo === 'venda' ? item.quantidade : null,
         valor: item.valor,
-        hora_inicio: item.produto_tipo === 'servico' ? item.hora_inicio || null : null,
-        hora_fim: item.produto_tipo === 'servico' ? item.hora_fim || null : null,
+        hora_inicio: item.produto_tipo === 'aluguel' ? item.hora_inicio || null : null,
+        hora_fim: item.produto_tipo === 'aluguel' ? item.hora_fim || null : null,
       })),
     }
 
@@ -598,7 +598,7 @@ function ItemRow({
   onChange: (patch: Partial<ItemForm>) => void
   onRemove: () => void
 }) {
-  const isServico = item.produto_tipo === 'servico'
+  const isServico = item.produto_tipo === 'aluguel'
   const isVenda = item.produto_tipo === 'venda'
 
   return (
@@ -613,7 +613,7 @@ function ItemRow({
           <option value="">Selecione...</option>
           {produtos.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.nome} ({p.tipo === 'servico' ? 'Serviço' : 'Venda'})
+              {p.nome} ({p.tipo === 'aluguel' ? 'Aluguel' : 'Venda'})
             </option>
           ))}
         </select>

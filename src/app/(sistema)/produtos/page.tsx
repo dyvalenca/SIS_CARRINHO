@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 interface Produto {
   id: string
   nome: string
-  tipo: 'venda' | 'servico'
+  tipo: 'venda' | 'aluguel'
   estoque: number | null
   ativo: boolean
 }
@@ -16,7 +16,7 @@ export default function ProdutosPage() {
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ nome: '', tipo: 'venda' as 'venda' | 'servico', estoque: 0 })
+  const [form, setForm] = useState({ nome: '', tipo: 'venda' as 'venda' | 'aluguel', estoque: 0 })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -48,7 +48,7 @@ export default function ProdutosPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Produtos</h1>
-          <p className="text-sm text-gray-500">Produtos e serviços disponíveis na empresa</p>
+          <p className="text-sm text-gray-500">Produtos e produtos disponíveis na empresa</p>
         </div>
         <button onClick={() => setShowForm(true)} className="btn-primary">
           <Plus className="w-4 h-4" /> Novo Produto
@@ -79,11 +79,11 @@ export default function ProdutosPage() {
               <label className="label">Tipo</label>
               <select
                 value={form.tipo}
-                onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value as 'venda' | 'servico' }))}
+                onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value as 'venda' | 'aluguel' }))}
                 className="input"
               >
                 <option value="venda">Venda</option>
-                <option value="servico">Serviço</option>
+                <option value="aluguel">Aluguel</option>
               </select>
             </div>
             {form.tipo === 'venda' && (
@@ -136,11 +136,11 @@ export default function ProdutosPage() {
                   <td className="px-4 py-3">
                     <span className={cn(
                       'px-2 py-0.5 rounded-full text-xs font-medium',
-                      p.tipo === 'servico'
+                      p.tipo === 'aluguel'
                         ? 'bg-purple-50 text-purple-700'
                         : 'bg-blue-50 text-blue-700'
                     )}>
-                      {p.tipo === 'servico' ? 'Serviço' : 'Venda'}
+                      {p.tipo === 'aluguel' ? 'Aluguel' : 'Venda'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600">

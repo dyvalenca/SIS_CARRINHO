@@ -1,4 +1,4 @@
-export type TipoProduto = 'venda' | 'servico'
+export type TipoProduto = 'venda' | 'aluguel'
 
 export interface Empresa {
   id: string
