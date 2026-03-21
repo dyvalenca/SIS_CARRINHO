@@ -53,19 +53,77 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ alugueis, data })
 }
 
-// PATCH /api/alugueis — finaliza um item e, se necessário, o pedido
+// PATCH /api/alugueis — finaliza ou cancela um item e, se necessário, o pedido
 export async function PATCH(request: NextRequest) {
   const session = await getSession()
   if (!session.profileId) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
 
-  const { item_id } = await request.json()
+  const { item_id, action = 'finalizar' } = await request.json()
   if (!item_id) return NextResponse.json({ error: 'item_id obrigatório.' }, { status: 400 })
 
   const supabase = createServerClient()
-
   const agora = new Date().toISOString()
 
-  // Finaliza o item
+  if (action === 'cancelar') {
+    // 1. Busca item para obter pedido_id e valor
+    const { data: item, error: fetchError } = await supabase
+      .from('itens_pedido')
+      .select('pedido_id, valor')
+      .eq('id', item_id)
+      .single()
+
+    if (fetchError || !item) {
+      return NextResponse.json({ error: fetchError?.message ?? 'Item não encontrado.' }, { status: 500 })
+    }
+
+    // 2. Cancela o item
+    const { error: cancelError } = await supabase
+      .from('itens_pedido')
+      .update({ status: 'CANCELADO', cancelado_em: agora })
+      .eq('id', item_id)
+
+    if (cancelError) {
+      return NextResponse.json({ error: cancelError.message }, { status: 500 })
+    }
+
+    // 3. Busca todos os itens do pedido (estado atualizado)
+    const { data: todosItens } = await supabase
+      .from('itens_pedido')
+      .select('status, valor')
+      .eq('pedido_id', item.pedido_id)
+
+    const itens = todosItens ?? []
+    const valorCancelado = itens
+      .filter((i) => i.status === 'CANCELADO')
+      .reduce((s, i) => s + (i.valor ?? 0), 0)
+
+    const todosCancelados  = itens.every((i) => i.status === 'CANCELADO')
+    const temEmAberto      = itens.some((i) => i.status === 'EM ABERTO')
+
+    // 4. Atualiza pedido conforme situação
+    if (todosCancelados) {
+      await supabase
+        .from('pedidos')
+        .update({ status: 'CANCELADO', cancelado_em: agora, valor_cancelado: valorCancelado })
+        .eq('id', item.pedido_id)
+    } else if (!temEmAberto) {
+      // Sem EM ABERTO restante → finaliza com contabilidade correta
+      await supabase
+        .from('pedidos')
+        .update({ status: 'FINALIZADO', finalizado_em: agora, valor_cancelado: valorCancelado })
+        .eq('id', item.pedido_id)
+    } else {
+      // Pedido segue aberto, só atualiza valor_cancelado
+      await supabase
+        .from('pedidos')
+        .update({ valor_cancelado: valorCancelado })
+        .eq('id', item.pedido_id)
+    }
+
+    return NextResponse.json({ ok: true })
+  }
+
+  // action === 'finalizar' (comportamento original)
   const { data: item, error: itemError } = await supabase
     .from('itens_pedido')
     .update({ status: 'FINALIZADO', finalizado_em: agora })
@@ -77,7 +135,6 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: itemError?.message ?? 'Item não encontrado.' }, { status: 500 })
   }
 
-  // Verifica se o pedido ainda tem itens EM ABERTO
   const { count } = await supabase
     .from('itens_pedido')
     .select('*', { count: 'exact', head: true })

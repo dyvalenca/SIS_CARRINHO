@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Clock, RefreshCw, Loader2, Plus, UserCheck, CheckSquare, Eye } from 'lucide-react'
+import { Clock, RefreshCw, Loader2, Plus, UserCheck, CheckSquare, Eye, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { formatCurrency, todayISO } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -74,6 +74,7 @@ export default function AlugueisPage() {
   const [horaAtual, setHoraAtual] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [finalizando, setFinalizando] = useState(false)
+  const [cancelando, setCancelando] = useState(false)
 
   const carregar = useCallback((d: string) => {
     setLoading(true)
@@ -96,6 +97,24 @@ export default function AlugueisPage() {
     const id = setInterval(tick, 60_000)
     return () => clearInterval(id)
   }, [])
+
+  async function handleCancelar() {
+    if (!selectedId) return
+    const ok = window.confirm('Deseja cancelar este item de aluguel?')
+    if (!ok) return
+    setCancelando(true)
+    try {
+      await fetch('/api/alugueis', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_id: selectedId, action: 'cancelar' }),
+      })
+      setSelectedId(null)
+      carregar(data)
+    } finally {
+      setCancelando(false)
+    }
+  }
 
   async function handleFinalizar() {
     if (!selectedId) return
@@ -152,8 +171,17 @@ export default function AlugueisPage() {
             <RefreshCw className="w-4 h-4" />
           </button>
           <button
+            onClick={handleCancelar}
+            disabled={!selectedId || cancelando || finalizando}
+            className="btn-secondary text-red-600 border-red-300 hover:bg-red-50 disabled:opacity-40"
+          >
+            {cancelando
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Cancelando...</>
+              : <><XCircle className="w-4 h-4" /> Cancelar</>}
+          </button>
+          <button
             onClick={handleFinalizar}
-            disabled={!selectedId || finalizando}
+            disabled={!selectedId || finalizando || cancelando}
             className="btn-primary bg-green-600 hover:bg-green-700 disabled:opacity-40"
           >
             {finalizando
