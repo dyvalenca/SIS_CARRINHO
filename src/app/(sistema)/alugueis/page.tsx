@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 interface AluguelItem {
   id: string
   pedido_id: string
+  data: string
   cliente_nome: string
   telefone: string | null
   produto: string
@@ -34,7 +35,14 @@ function agoraMin() {
 
 type StatusAluguel = 'ativo' | 'carencia' | 'expirado'
 
-function statusAluguel(horaFim: string | null, tolerancia: number): StatusAluguel {
+function hojeISO() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function statusAluguel(data: string, horaFim: string | null, tolerancia: number): StatusAluguel {
+  // Data anterior a hoje → sempre expirado
+  if (data < hojeISO()) return 'expirado'
   if (!horaFim) return 'ativo'
   const now = agoraMin()
   const fimMin = toMin(horaFim)
@@ -43,7 +51,8 @@ function statusAluguel(horaFim: string | null, tolerancia: number): StatusAlugue
   return 'expirado'
 }
 
-function minutosAlemDoPrazo(horaFim: string | null): number {
+function minutosAlemDoPrazo(data: string, horaFim: string | null): number {
+  if (data < hojeISO()) return 0 // dia anterior — não calcula minutos
   if (!horaFim) return 0
   return Math.max(0, agoraMin() - toMin(horaFim))
 }
@@ -93,7 +102,7 @@ export default function AlugueisPage() {
     const item = alugueis.find((a) => a.id === selectedId)
     if (!item) return
 
-    const st = statusAluguel(item.hora_fim, item.tolerancia)
+    const st = statusAluguel(item.data, item.hora_fim, item.tolerancia)
     if (st === 'ativo') {
       const ok = window.confirm('Este aluguel ainda está em andamento. Deseja realmente finalizá-lo?')
       if (!ok) return
@@ -118,9 +127,9 @@ export default function AlugueisPage() {
     router.replace(`/alugueis?data=${novaData}`)
   }
 
-  const ativos    = alugueis.filter((a) => statusAluguel(a.hora_fim, a.tolerancia) === 'ativo')
-  const carencias = alugueis.filter((a) => statusAluguel(a.hora_fim, a.tolerancia) === 'carencia')
-  const expirados = alugueis.filter((a) => statusAluguel(a.hora_fim, a.tolerancia) === 'expirado')
+  const ativos    = alugueis.filter((a) => statusAluguel(a.data, a.hora_fim, a.tolerancia) === 'ativo')
+  const carencias = alugueis.filter((a) => statusAluguel(a.data, a.hora_fim, a.tolerancia) === 'carencia')
+  const expirados = alugueis.filter((a) => statusAluguel(a.data, a.hora_fim, a.tolerancia) === 'expirado')
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
@@ -205,9 +214,10 @@ export default function AlugueisPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {alugueis.map((item) => {
-                const st = statusAluguel(item.hora_fim, item.tolerancia)
+                const st = statusAluguel(item.data, item.hora_fim, item.tolerancia)
                 const { label, cls, row } = statusConfig[st]
-                const minExtra = minutosAlemDoPrazo(item.hora_fim)
+                const minExtra = minutosAlemDoPrazo(item.data, item.hora_fim)
+                const diaAnterior = item.data < hojeISO()
                 return (
                   <tr
                     key={item.id}
@@ -257,7 +267,9 @@ export default function AlugueisPage() {
                         <span className="font-semibold text-yellow-600">{minExtra} min</span>
                       )}
                       {st === 'expirado' && (
-                        <span className="font-semibold text-red-600">{minExtra} min</span>
+                        diaAnterior
+                          ? <span className="font-semibold text-red-600">Dia anterior</span>
+                          : <span className="font-semibold text-red-600">{minExtra} min</span>
                       )}
                       {st === 'ativo' && (
                         <span className="text-gray-300">—</span>

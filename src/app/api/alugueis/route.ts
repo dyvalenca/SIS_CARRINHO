@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
       .map((item) => ({
         id: item.id,
         pedido_id: p.id,
+        data: data,
         cliente_nome: p.cliente_nome,
         telefone: p.telefone,
         produto: item.produtos?.nome ?? '—',
