@@ -32,12 +32,10 @@ export default async function PedidoViewPage({
     .select(`
       id, data, cpf, cliente_nome, telefone, valor_total, valor_cancelado,
       status, criado_em, finalizado_em, cancelado_em,
-      cancelador:profiles!cancelado_por(nome),
       dinheiro, cartao_debito, cartao_credito, pix, outros, obs, troco,
       itens_pedido(
         id, valor, quantidade, hora_inicio, hora_fim, status,
         finalizado_em, cancelado_em,
-        cancelador:profiles!cancelado_por(nome),
         tolerancia, valor_minuto_excedente, cobra_tolerancia,
         produtos(id, nome, tipo),
         planos(id, nome, tempo, preco),
@@ -70,7 +68,6 @@ export default async function PedidoViewPage({
   ].filter(Boolean) as { label: string; valor: number }[]
 
   const statusPedido = statusPedidoConfig[pedido.status] ?? { label: pedido.status, cls: 'bg-gray-100 text-gray-600' }
-  const canceladorPedido = (pedido as any).cancelador?.nome ?? null
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
@@ -84,12 +81,6 @@ export default async function PedidoViewPage({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {pedido.status === 'CANCELADO' && canceladorPedido && (
-            <span className="text-xs text-red-500 flex items-center gap-1">
-              <XCircle className="w-3.5 h-3.5" />
-              Cancelado por {canceladorPedido}
-            </span>
-          )}
           <span className={cn('px-3 py-1 rounded-full text-sm font-semibold', statusPedido.cls)}>
             {statusPedido.label}
           </span>
@@ -141,7 +132,6 @@ export default async function PedidoViewPage({
               const isAluguel = item.produtos?.tipo === 'aluguel'
               const isCancelado = item.status === 'CANCELADO'
               const st = statusItemConfig[item.status] ?? { label: item.status, cls: 'bg-gray-100 text-gray-600' }
-              const canceladorItem = item.cancelador?.nome ?? null
               return (
                 <tr key={item.id} className={cn('hover:bg-gray-50', isCancelado && 'opacity-60')}>
                   <td className="px-4 py-3">
@@ -155,12 +145,6 @@ export default async function PedidoViewPage({
                         {item.tolerancia != null && (
                           <span className="ml-1 text-gray-400">· tol. {item.tolerancia}min</span>
                         )}
-                      </p>
-                    )}
-                    {isCancelado && canceladorItem && (
-                      <p className="text-xs text-red-400 flex items-center gap-1 mt-0.5">
-                        <XCircle className="w-3 h-3" />
-                        Cancelado por {canceladorItem}
                       </p>
                     )}
                   </td>
