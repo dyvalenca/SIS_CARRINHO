@@ -27,15 +27,15 @@ export default async function PedidoViewPage({
   if (!session.profileId) redirect('/login')
 
   const supabase = createServerClient()
-  const { data: pedido } = await supabase
+  const { data: pedido, error: pedidoError } = await supabase
     .from('pedidos')
     .select(`
       id, data, cpf, cliente_nome, telefone, valor_total, valor_cancelado,
-      status, criado_em, finalizado_em, cancelado_em,
+      status, criado_em, finalizado_em, cancelado_em, cancelado_por,
       dinheiro, cartao_debito, cartao_credito, pix, outros, obs, troco,
       itens_pedido(
         id, valor, quantidade, hora_inicio, hora_fim, status,
-        finalizado_em, cancelado_em,
+        finalizado_em, cancelado_em, cancelado_por,
         tolerancia, valor_minuto_excedente, cobra_tolerancia,
         produtos(id, nome, tipo),
         planos(id, nome, tempo, preco),
@@ -46,10 +46,25 @@ export default async function PedidoViewPage({
     .eq('empresa_id', session.empresaAtualId)
     .single()
 
-  if (!pedido) redirect('/pedidos')
+  if (pedidoError || !pedido) redirect('/pedidos')
 
   const itens = (pedido.itens_pedido as any[]) ?? []
   const hora = new Date(pedido.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+
+  // Busca nomes dos perfis que cancelaram (query separada evita problemas de join RLS)
+  const canceladoPorIds = [
+    (pedido as any).cancelado_por,
+    ...itens.map((i: any) => i.cancelado_por),
+  ].filter(Boolean) as string[]
+
+  const profileMap: Record<string, string> = {}
+  if (canceladoPorIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, nome')
+      .in('id', [...new Set(canceladoPorIds)])
+    profiles?.forEach((p: any) => { profileMap[p.id] = p.nome })
+  }
 
   // Calcula totais direto dos itens para não depender do campo denormalizado
   const totalItensCancelados = itens
@@ -68,6 +83,7 @@ export default async function PedidoViewPage({
   ].filter(Boolean) as { label: string; valor: number }[]
 
   const statusPedido = statusPedidoConfig[pedido.status] ?? { label: pedido.status, cls: 'bg-gray-100 text-gray-600' }
+  const canceladorPedido = profileMap[(pedido as any).cancelado_por] ?? null
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
@@ -81,6 +97,12 @@ export default async function PedidoViewPage({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {pedido.status === 'CANCELADO' && canceladorPedido && (
+            <span className="text-xs text-red-500 flex items-center gap-1">
+              <XCircle className="w-3.5 h-3.5" />
+              Cancelado por {canceladorPedido}
+            </span>
+          )}
           <span className={cn('px-3 py-1 rounded-full text-sm font-semibold', statusPedido.cls)}>
             {statusPedido.label}
           </span>

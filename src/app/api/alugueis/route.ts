@@ -48,7 +48,56 @@ export async function GET(request: NextRequest) {
       })),
   )
 
-  alugueis.sort((a, b) => (a.hora_fim ?? '99:99').localeCompare(b.hora_fim ?? '99:99'))
+  // Quando visualizando hoje, inclui também itens EM ABERTO de datas anteriores
+  if (data === todayISO()) {
+    const { data: pedidosAntigos } = await supabase
+      .from('pedidos')
+      .select(`
+        id, data, cliente_nome, telefone,
+        itens_pedido(
+          id, hora_inicio, hora_fim, valor, status, tolerancia,
+          produtos(id, nome, tipo),
+          planos(id, nome, tempo),
+          vendedores(id, nome)
+        )
+      `)
+      .eq('empresa_id', session.empresaAtualId)
+      .lt('data', data)
+      .eq('status', 'EM ABERTO')
+      .order('data', { ascending: false })
+
+    const alugueisAntigos = (pedidosAntigos ?? []).flatMap((p) =>
+      ((p.itens_pedido as any[]) ?? [])
+        .filter((item) => item.produtos?.tipo === 'aluguel' && item.status === 'EM ABERTO')
+        .map((item) => ({
+          id: item.id,
+          pedido_id: p.id,
+          data: p.data,
+          cliente_nome: p.cliente_nome,
+          telefone: p.telefone,
+          produto: item.produtos?.nome ?? '—',
+          plano: item.planos?.nome ?? '—',
+          plano_tempo: item.planos?.tempo ?? null,
+          tolerancia: item.tolerancia ?? 0,
+          hora_inicio: item.hora_inicio,
+          hora_fim: item.hora_fim,
+          valor: item.valor,
+          vendedor: item.vendedores?.nome ?? null,
+        })),
+    )
+
+    // Pendências de dias anteriores vão no topo
+    alugueis.unshift(...alugueisAntigos)
+  }
+
+  alugueis.sort((a, b) => {
+    const hoje = todayISO()
+    const aAnterior = a.data < hoje ? 1 : 0
+    const bAnterior = b.data < hoje ? 1 : 0
+    // Pendências de dias anteriores sempre primeiro
+    if (aAnterior !== bAnterior) return aAnterior - bAnterior
+    return (a.hora_fim ?? '99:99').localeCompare(b.hora_fim ?? '99:99')
+  })
 
   return NextResponse.json({ alugueis, data })
 }

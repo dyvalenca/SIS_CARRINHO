@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Clock, RefreshCw, Loader2, Plus, UserCheck, CheckSquare, Eye, XCircle } from 'lucide-react'
+import { Clock, RefreshCw, Loader2, Plus, UserCheck, CheckSquare, Eye, XCircle, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { formatCurrency, todayISO } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -146,9 +146,13 @@ export default function AlugueisPage() {
     router.replace(`/alugueis?data=${novaData}`)
   }
 
-  const ativos    = alugueis.filter((a) => statusAluguel(a.data, a.hora_fim, a.tolerancia) === 'ativo')
-  const carencias = alugueis.filter((a) => statusAluguel(a.data, a.hora_fim, a.tolerancia) === 'carencia')
-  const expirados = alugueis.filter((a) => statusAluguel(a.data, a.hora_fim, a.tolerancia) === 'expirado')
+  const isHoje = data === hojeISO()
+  const pendentesAnteriores = alugueis.filter((a) => a.data < hojeISO())
+  const alugueisHoje = alugueis.filter((a) => a.data >= hojeISO())
+
+  const ativos    = alugueisHoje.filter((a) => statusAluguel(a.data, a.hora_fim, a.tolerancia) === 'ativo')
+  const carencias = alugueisHoje.filter((a) => statusAluguel(a.data, a.hora_fim, a.tolerancia) === 'carencia')
+  const expirados = alugueisHoje.filter((a) => statusAluguel(a.data, a.hora_fim, a.tolerancia) === 'expirado')
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
@@ -195,7 +199,15 @@ export default function AlugueisPage() {
       </div>
 
       {/* Resumo */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className={cn('grid gap-4', isHoje && pendentesAnteriores.length > 0 ? 'grid-cols-4' : 'grid-cols-3')}>
+        {isHoje && pendentesAnteriores.length > 0 && (
+          <div className="card p-4 border-l-4 border-orange-500 bg-orange-50">
+            <p className="text-xs text-orange-700 uppercase font-semibold flex items-center gap-1">
+              <AlertTriangle className="w-3.5 h-3.5" /> Dias anteriores
+            </p>
+            <p className="text-3xl font-bold text-orange-600 mt-1">{pendentesAnteriores.length}</p>
+          </div>
+        )}
         <div className="card p-4 border-l-4 border-green-500">
           <p className="text-xs text-gray-500 uppercase font-semibold">Em andamento</p>
           <p className="text-3xl font-bold text-green-700 mt-1">{ativos.length}</p>
@@ -246,12 +258,15 @@ export default function AlugueisPage() {
                 const { label, cls, row } = statusConfig[st]
                 const minExtra = minutosAlemDoPrazo(item.data, item.hora_fim)
                 const diaAnterior = item.data < hojeISO()
+                const pendenciaAnterior = isHoje && diaAnterior
                 return (
                   <tr
                     key={item.id}
                     className={cn(
                       'transition-colors cursor-pointer',
-                      row,
+                      pendenciaAnterior
+                        ? 'bg-orange-50 hover:bg-orange-100 border-l-4 border-orange-400'
+                        : row,
                       selectedId === item.id && 'ring-2 ring-inset ring-blue-400',
                     )}
                     onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}
@@ -265,9 +280,20 @@ export default function AlugueisPage() {
                       />
                     </td>
                     <td className="px-4 py-3">
-                      <span className={cn('px-2 py-1 rounded-full text-xs font-semibold border', cls)}>
-                        {label}
-                      </span>
+                      {pendenciaAnterior ? (
+                        <span className="inline-flex flex-col gap-0.5">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold border bg-orange-100 text-orange-700 border-orange-300 inline-flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" /> Dia anterior
+                          </span>
+                          <span className="text-xs text-orange-500 font-mono pl-1">
+                            {item.data.split('-').reverse().join('/')}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className={cn('px-2 py-1 rounded-full text-xs font-semibold border', cls)}>
+                          {label}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{item.cliente_nome}</p>
