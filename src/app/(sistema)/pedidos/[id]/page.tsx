@@ -62,7 +62,7 @@ export default async function PedidoViewPage({
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, nome')
-      .in('id', [...new Set(canceladoPorIds)])
+      .in('id', Array.from(new Set<string>(canceladoPorIds)))
     profiles?.forEach((p: any) => { profileMap[p.id] = p.nome })
   }
 
