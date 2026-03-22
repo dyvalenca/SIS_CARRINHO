@@ -79,7 +79,7 @@ export async function PATCH(request: NextRequest) {
     // 2. Cancela o item
     const { error: cancelError } = await supabase
       .from('itens_pedido')
-      .update({ status: 'CANCELADO', cancelado_em: agora })
+      .update({ status: 'CANCELADO', cancelado_em: agora, cancelado_por: session.profileId })
       .eq('id', item_id)
 
     if (cancelError) {
@@ -104,7 +104,7 @@ export async function PATCH(request: NextRequest) {
     if (todosCancelados) {
       await supabase
         .from('pedidos')
-        .update({ status: 'CANCELADO', cancelado_em: agora, valor_cancelado: valorCancelado })
+        .update({ status: 'CANCELADO', cancelado_em: agora, cancelado_por: session.profileId, valor_cancelado: valorCancelado })
         .eq('id', item.pedido_id)
     } else if (!temEmAberto) {
       // Sem EM ABERTO restante → finaliza com contabilidade correta

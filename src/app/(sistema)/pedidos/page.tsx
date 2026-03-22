@@ -4,7 +4,14 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, ShoppingCart, Eye } from 'lucide-react'
 import { formatCurrency, formatDate, todayISO } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { FiltroData } from '@/components/pedidos/filtro-data'
+
+const statusBadge: Record<string, string> = {
+  'EM ABERTO':  'bg-blue-50 text-blue-700',
+  'FINALIZADO': 'bg-green-50 text-green-700',
+  'CANCELADO':  'bg-red-50 text-red-600',
+}
 
 export default async function PedidosPage({
   searchParams,
@@ -20,7 +27,7 @@ export default async function PedidosPage({
   const { data: pedidos } = await supabase
     .from('pedidos')
     .select(`
-      id, data, cpf, cliente_nome, telefone, valor_total,
+      id, data, cpf, cliente_nome, telefone, valor_total, valor_cancelado, status,
       dinheiro, cartao_debito, cartao_credito, pix, outros, troco, criado_em,
       itens_pedido(id)
     `)
@@ -28,7 +35,10 @@ export default async function PedidosPage({
     .eq('data', dataFiltro)
     .order('criado_em', { ascending: false })
 
-  const totalDia = pedidos?.reduce((s, p) => s + (p.valor_total ?? 0), 0) ?? 0
+  const totalDia = pedidos?.reduce((s, p) => {
+    const cancelado = (p as any).valor_cancelado ?? 0
+    return s + Math.max(0, (p.valor_total ?? 0) - cancelado)
+  }, 0) ?? 0
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
@@ -63,6 +73,7 @@ export default async function PedidosPage({
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Hora</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Cliente</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Itens</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Total</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Pagamentos</th>
               </tr>
@@ -79,6 +90,10 @@ export default async function PedidosPage({
                   pedido.pix > 0 && `PIX ${formatCurrency(pedido.pix)}`,
                   pedido.outros > 0 && `Outros ${formatCurrency(pedido.outros)}`,
                 ].filter(Boolean).join(' · ')
+
+                const status = (pedido as any).status ?? 'EM ABERTO'
+                const valorCancelado = (pedido as any).valor_cancelado ?? 0
+                const valorLiquido = Math.max(0, pedido.valor_total - valorCancelado)
 
                 return (
                   <tr key={pedido.id} className="hover:bg-gray-50 transition-colors">
@@ -101,8 +116,17 @@ export default async function PedidosPage({
                         {pedido.itens_pedido?.length ?? 0} {pedido.itens_pedido?.length === 1 ? 'item' : 'itens'}
                       </span>
                     </td>
+                    <td className="px-4 py-3">
+                      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', statusBadge[status] ?? 'bg-gray-100 text-gray-600')}>
+                        {status === 'EM ABERTO' ? 'Em Aberto' : status === 'FINALIZADO' ? 'Finalizado' : 'Cancelado'}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-right font-bold text-gray-900">
-                      {formatCurrency(pedido.valor_total)}
+                      {valorCancelado > 0 ? (
+                        <span title={`Bruto: ${formatCurrency(pedido.valor_total)} — Cancelado: ${formatCurrency(valorCancelado)}`}>
+                          {formatCurrency(valorLiquido)}
+                        </span>
+                      ) : formatCurrency(pedido.valor_total)}
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-500">
                       {pagamentos || '—'}
@@ -114,9 +138,10 @@ export default async function PedidosPage({
             </tbody>
             <tfoot className="border-t-2 border-gray-300 bg-gray-50">
               <tr>
-                <td colSpan={3} className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
-                  Total ({pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''})
+                <td colSpan={4} className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
+                  Total líquido ({pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''})
                 </td>
+                <td></td>
                 <td className="px-4 py-3 text-right font-bold text-gray-900">
                   {formatCurrency(totalDia)}
                 </td>

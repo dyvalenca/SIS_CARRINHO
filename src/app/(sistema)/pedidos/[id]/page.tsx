@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { createServerClient } from '@/lib/supabase/server'
-import { Clock, UserCheck } from 'lucide-react'
+import { Clock, UserCheck, XCircle } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { BackButton } from '@/components/ui/back-button'
@@ -15,7 +15,7 @@ const statusPedidoConfig: Record<string, { label: string; cls: string }> = {
 const statusItemConfig: Record<string, { label: string; cls: string }> = {
   'EM ABERTO':  { label: 'Em Aberto',  cls: 'bg-blue-50 text-blue-700' },
   'FINALIZADO': { label: 'Finalizado', cls: 'bg-green-50 text-green-700' },
-  'CANCELADO':  { label: 'Cancelado',  cls: 'bg-red-50 text-red-700' },
+  'CANCELADO':  { label: 'Cancelado',  cls: 'bg-red-100 text-red-700' },
 }
 
 export default async function PedidoViewPage({
@@ -30,10 +30,14 @@ export default async function PedidoViewPage({
   const { data: pedido } = await supabase
     .from('pedidos')
     .select(`
-      id, data, cpf, cliente_nome, telefone, valor_total, status, criado_em, finalizado_em,
+      id, data, cpf, cliente_nome, telefone, valor_total, valor_cancelado,
+      status, criado_em, finalizado_em, cancelado_em,
+      cancelador:profiles!cancelado_por(nome),
       dinheiro, cartao_debito, cartao_credito, pix, outros, obs, troco,
       itens_pedido(
-        id, valor, quantidade, hora_inicio, hora_fim, status, finalizado_em,
+        id, valor, quantidade, hora_inicio, hora_fim, status,
+        finalizado_em, cancelado_em,
+        cancelador:profiles!cancelado_por(nome),
         tolerancia, valor_minuto_excedente, cobra_tolerancia,
         produtos(id, nome, tipo),
         planos(id, nome, tempo, preco),
@@ -49,15 +53,24 @@ export default async function PedidoViewPage({
   const itens = (pedido.itens_pedido as any[]) ?? []
   const hora = new Date(pedido.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
+  // Calcula totais direto dos itens para não depender do campo denormalizado
+  const totalItensCancelados = itens
+    .filter((i: any) => i.status === 'CANCELADO')
+    .reduce((s: number, i: any) => s + (i.valor ?? 0), 0)
+  const totalBruto = itens.reduce((s: number, i: any) => s + (i.valor ?? 0), 0)
+  const valorLiquido = totalBruto - totalItensCancelados
+  const temCancelados = totalItensCancelados > 0
+
   const pagamentos = [
-    pedido.dinheiro > 0     && { label: 'Dinheiro',         valor: pedido.dinheiro },
-    pedido.cartao_debito > 0 && { label: 'Cartão de Débito', valor: pedido.cartao_debito },
+    pedido.dinheiro > 0      && { label: 'Dinheiro',          valor: pedido.dinheiro },
+    pedido.cartao_debito > 0  && { label: 'Cartão de Débito',  valor: pedido.cartao_debito },
     pedido.cartao_credito > 0 && { label: 'Cartão de Crédito', valor: pedido.cartao_credito },
-    pedido.pix > 0          && { label: 'PIX',              valor: pedido.pix },
-    pedido.outros > 0       && { label: 'Outros',           valor: pedido.outros },
+    pedido.pix > 0           && { label: 'PIX',               valor: pedido.pix },
+    pedido.outros > 0        && { label: 'Outros',            valor: pedido.outros },
   ].filter(Boolean) as { label: string; valor: number }[]
 
   const statusPedido = statusPedidoConfig[pedido.status] ?? { label: pedido.status, cls: 'bg-gray-100 text-gray-600' }
+  const canceladorPedido = (pedido as any).cancelador?.nome ?? null
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
@@ -70,9 +83,17 @@ export default async function PedidoViewPage({
             <p className="text-sm text-gray-500">{formatDate(pedido.data)} · {hora}</p>
           </div>
         </div>
-        <span className={cn('px-3 py-1 rounded-full text-sm font-semibold', statusPedido.cls)}>
-          {statusPedido.label}
-        </span>
+        <div className="flex items-center gap-2">
+          {pedido.status === 'CANCELADO' && canceladorPedido && (
+            <span className="text-xs text-red-500 flex items-center gap-1">
+              <XCircle className="w-3.5 h-3.5" />
+              Cancelado por {canceladorPedido}
+            </span>
+          )}
+          <span className={cn('px-3 py-1 rounded-full text-sm font-semibold', statusPedido.cls)}>
+            {statusPedido.label}
+          </span>
+        </div>
       </div>
 
       {/* Dados do cliente */}
@@ -118,11 +139,15 @@ export default async function PedidoViewPage({
           <tbody className="divide-y divide-gray-100">
             {itens.map((item: any) => {
               const isAluguel = item.produtos?.tipo === 'aluguel'
+              const isCancelado = item.status === 'CANCELADO'
               const st = statusItemConfig[item.status] ?? { label: item.status, cls: 'bg-gray-100 text-gray-600' }
+              const canceladorItem = item.cancelador?.nome ?? null
               return (
-                <tr key={item.id} className="hover:bg-gray-50">
+                <tr key={item.id} className={cn('hover:bg-gray-50', isCancelado && 'opacity-60')}>
                   <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900">{item.produtos?.nome ?? '—'}</p>
+                    <p className={cn('font-medium text-gray-900', isCancelado && 'line-through text-gray-400')}>
+                      {item.produtos?.nome ?? '—'}
+                    </p>
                     {item.planos && (
                       <p className="text-xs text-gray-500">
                         {item.planos.nome}
@@ -132,12 +157,18 @@ export default async function PedidoViewPage({
                         )}
                       </p>
                     )}
+                    {isCancelado && canceladorItem && (
+                      <p className="text-xs text-red-400 flex items-center gap-1 mt-0.5">
+                        <XCircle className="w-3 h-3" />
+                        Cancelado por {canceladorItem}
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-gray-600">
                     {isAluguel ? (
                       <span className="inline-flex items-center gap-1 font-mono text-xs">
                         <Clock className="w-3 h-3 text-gray-400" />
-                        {item.hora_inicio ?? '—'} → {item.hora_fim ?? '—'}
+                        {item.hora_inicio?.slice(0, 5) ?? '—'} → {item.hora_fim?.slice(0, 5) ?? '—'}
                       </span>
                     ) : (
                       <span className="text-gray-600">{item.quantidade ?? 1}x</span>
@@ -156,7 +187,7 @@ export default async function PedidoViewPage({
                       {st.label}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right font-bold text-gray-900">
+                  <td className={cn('px-4 py-3 text-right font-bold', isCancelado ? 'line-through text-gray-400' : 'text-gray-900')}>
                     {formatCurrency(item.valor)}
                   </td>
                 </tr>
@@ -164,12 +195,39 @@ export default async function PedidoViewPage({
             })}
           </tbody>
           <tfoot className="border-t-2 border-gray-200 bg-gray-50">
-            <tr>
-              <td colSpan={4} className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Total</td>
-              <td className="px-4 py-3 text-right font-bold text-gray-900 text-base">
-                {formatCurrency(pedido.valor_total)}
-              </td>
-            </tr>
+            {temCancelados ? (
+              <>
+                <tr>
+                  <td colSpan={4} className="px-4 py-2 text-xs text-gray-500">Subtotal bruto</td>
+                  <td className="px-4 py-2 text-right text-sm text-gray-500">
+                    {formatCurrency(totalBruto)}
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={4} className="px-4 py-2 text-xs text-red-500">
+                    <span className="inline-flex items-center gap-1">
+                      <XCircle className="w-3 h-3" /> Itens cancelados
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-right text-sm text-red-500 font-medium">
+                    − {formatCurrency(totalItensCancelados)}
+                  </td>
+                </tr>
+                <tr className="border-t border-gray-200">
+                  <td colSpan={4} className="px-4 py-3 text-xs font-bold text-gray-700 uppercase">Valor Líquido</td>
+                  <td className="px-4 py-3 text-right font-bold text-gray-900 text-base">
+                    {formatCurrency(valorLiquido)}
+                  </td>
+                </tr>
+              </>
+            ) : (
+              <tr>
+                <td colSpan={4} className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Total</td>
+                <td className="px-4 py-3 text-right font-bold text-gray-900 text-base">
+                  {formatCurrency(totalBruto)}
+                </td>
+              </tr>
+            )}
           </tfoot>
         </table>
       </div>
@@ -193,9 +251,15 @@ export default async function PedidoViewPage({
           {pedido.obs && (
             <p className="text-xs text-gray-400 pt-1">Obs: {pedido.obs}</p>
           )}
+          {temCancelados && (
+            <div className="flex justify-between text-sm text-red-500">
+              <span>Itens cancelados</span>
+              <span>− {formatCurrency(totalItensCancelados)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-sm font-bold border-t border-gray-200 pt-2 mt-2">
-            <span className="text-gray-700">Total do pedido</span>
-            <span className="text-gray-900">{formatCurrency(pedido.valor_total)}</span>
+            <span className="text-gray-700">{temCancelados ? 'Valor líquido do pedido' : 'Total do pedido'}</span>
+            <span className="text-gray-900">{formatCurrency(valorLiquido)}</span>
           </div>
         </div>
       </div>

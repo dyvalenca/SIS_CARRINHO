@@ -43,3 +43,30 @@ export async function POST(request: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ produto: data }, { status: 201 })
 }
+
+export async function PATCH(request: NextRequest) {
+  const session = await getSession()
+  if (!session.profileId) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
+
+  const { id, nome, tipo, estoque, ativo } = await request.json()
+  if (!id || !nome?.trim() || !tipo) {
+    return NextResponse.json({ error: 'id, nome e tipo são obrigatórios.' }, { status: 400 })
+  }
+
+  const supabase = createServerClient()
+  const { data, error } = await supabase
+    .from('produtos')
+    .update({
+      nome: nome.trim(),
+      tipo,
+      estoque: tipo === 'venda' ? (estoque ?? 0) : null,
+      ativo: ativo ?? true,
+    })
+    .eq('id', id)
+    .eq('empresa_id', session.empresaAtualId)
+    .select('id, nome, tipo, estoque, ativo')
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ produto: data })
+}

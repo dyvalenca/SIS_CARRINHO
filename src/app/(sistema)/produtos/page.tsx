@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Package, Plus, X, Loader2 } from 'lucide-react'
+import { Package, Plus, X, Loader2, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Produto {
@@ -12,11 +12,14 @@ interface Produto {
   ativo: boolean
 }
 
+const emptyForm = { nome: '', tipo: 'venda' as 'venda' | 'aluguel', estoque: 0, ativo: true }
+
 export default function ProdutosPage() {
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ nome: '', tipo: 'venda' as 'venda' | 'aluguel', estoque: 0 })
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -27,19 +30,52 @@ export default function ProdutosPage() {
     })
   }, [])
 
+  function openNew() {
+    setEditingId(null)
+    setForm(emptyForm)
+    setError('')
+    setShowForm(true)
+  }
+
+  function openEdit(p: Produto) {
+    setEditingId(p.id)
+    setForm({ nome: p.nome, tipo: p.tipo, estoque: p.estoque ?? 0, ativo: p.ativo })
+    setError('')
+    setShowForm(true)
+  }
+
+  function closeForm() {
+    setShowForm(false)
+    setEditingId(null)
+    setForm(emptyForm)
+    setError('')
+  }
+
   async function handleSave() {
     if (!form.nome.trim()) { setError('Nome obrigatório'); return }
     setSaving(true); setError('')
-    const res = await fetch('/api/produtos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    const data = await res.json()
-    if (!res.ok) { setError(data.error); setSaving(false); return }
-    setProdutos((p) => [data.produto, ...p])
-    setShowForm(false)
-    setForm({ nome: '', tipo: 'venda', estoque: 0 })
+
+    if (editingId) {
+      const res = await fetch('/api/produtos', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingId, ...form }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error); setSaving(false); return }
+      setProdutos((prev) => prev.map((p) => p.id === editingId ? data.produto : p))
+    } else {
+      const res = await fetch('/api/produtos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error); setSaving(false); return }
+      setProdutos((prev) => [data.produto, ...prev])
+    }
+
+    closeForm()
     setSaving(false)
   }
 
@@ -50,7 +86,7 @@ export default function ProdutosPage() {
           <h1 className="text-2xl font-bold text-gray-900">Produtos</h1>
           <p className="text-sm text-gray-500">Produtos e produtos disponíveis na empresa</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="btn-primary">
+        <button onClick={openNew} className="btn-primary">
           <Plus className="w-4 h-4" /> Novo Produto
         </button>
       </div>
@@ -59,8 +95,10 @@ export default function ProdutosPage() {
       {showForm && (
         <div className="card p-5 border-blue-200 bg-blue-50">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-800">Novo Produto</h3>
-            <button onClick={() => setShowForm(false)} className="btn-ghost p-1">
+            <h3 className="font-semibold text-gray-800">
+              {editingId ? 'Editar Produto' : 'Novo Produto'}
+            </h3>
+            <button onClick={closeForm} className="btn-ghost p-1">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -88,7 +126,7 @@ export default function ProdutosPage() {
             </div>
             {form.tipo === 'venda' && (
               <div>
-                <label className="label">Estoque inicial</label>
+                <label className="label">Estoque</label>
                 <input
                   type="number"
                   min="0"
@@ -98,10 +136,22 @@ export default function ProdutosPage() {
                 />
               </div>
             )}
+            {editingId && (
+              <div className="flex items-center gap-2 pt-6">
+                <input
+                  id="ativo-check"
+                  type="checkbox"
+                  checked={form.ativo}
+                  onChange={(e) => setForm((f) => ({ ...f, ativo: e.target.checked }))}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                <label htmlFor="ativo-check" className="text-sm text-gray-700 cursor-pointer">Ativo</label>
+              </div>
+            )}
           </div>
           {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
           <div className="flex justify-end gap-2 mt-4">
-            <button onClick={() => setShowForm(false)} className="btn-secondary">Cancelar</button>
+            <button onClick={closeForm} className="btn-secondary">Cancelar</button>
             <button onClick={handleSave} disabled={saving} className="btn-primary">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
             </button>
@@ -127,6 +177,7 @@ export default function ProdutosPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Tipo</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Estoque</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
+                <th className="w-10 px-4 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -150,6 +201,15 @@ export default function ProdutosPage() {
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.ativo ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {p.ativo ? 'Ativo' : 'Inativo'}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => openEdit(p)}
+                      className="p-1.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                      title="Editar produto"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
                   </td>
                 </tr>
               ))}
